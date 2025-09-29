@@ -1,0 +1,43 @@
+{
+  "name": "pnpm-upgrade-interactive",
+  "version": "1.0.1",
+  "description": "Interactive upgrade tool for pnpm, inspired by yarn upgrade-interactive",
+  "main": "dist/index.js",
+  "bin": "./dist/cli.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/cli.js",
+    "prepare": "pnpm build",
+    "test": "cd example && node ../dist/cli.js",
+    "link": "pnpm build && pnpm link --global"
+  },
+  "author": "Donfear",
+  "keywords": [
+    "pnpm",
+    "upgrade",
+    "interactive",
+    "cli",
+    "package-manager"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/inquirer": "^9.0.9",
+    "@types/keypress": "^2.0.30",
+    "@types/node": "^20.19.17",
+    "@types/semver": "^7.7.1",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "commander": "^14.0.1",
+    "inquirer": "^12.9.6",
+    "keypress": "^0.2.1",
+    "ora": "^9.0.0",
+    "semver": "^7.7.2",
+    "table": "^6.9.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
