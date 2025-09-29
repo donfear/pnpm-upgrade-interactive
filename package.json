@@ -24,6 +24,10 @@
     "package-manager"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/donfear/pnpm-upgrade-interactive"
+  },
   "files": [
     "dist",
     "README.md"
