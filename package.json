@@ -1,6 +1,6 @@
 {
   "name": "pnpm-upgrade-interactive",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Interactive CLI tool for upgrading pnpm dependencies with ease. Inspired by yarn upgrade-interactive. Supports monorepos, workspaces, and batch upgrades.",
   "main": "dist/index.js",
   "bin": {
