@@ -1,6 +1,6 @@
 {
   "name": "pnpm-upgrade-interactive",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Interactive upgrade tool for pnpm, inspired by yarn upgrade-interactive",
   "main": "dist/index.js",
   "bin": "./dist/cli.js",
