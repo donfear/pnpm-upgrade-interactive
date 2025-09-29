@@ -10,7 +10,10 @@
     "start": "node dist/cli.js",
     "prepare": "pnpm build",
     "test": "cd example && node ../dist/cli.js",
-    "link": "pnpm build && pnpm link --global"
+    "link": "pnpm build && pnpm link --global",
+    "version:patch": "npm version patch",
+    "version:minor": "npm version minor",
+    "version:major": "npm version major"
   },
   "author": "Donfear",
   "keywords": [
@@ -21,6 +24,10 @@
     "package-manager"
   ],
   "license": "MIT",
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "devDependencies": {
     "@types/inquirer": "^9.0.9",
     "@types/keypress": "^2.0.30",
