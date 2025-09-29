@@ -1,7 +1,7 @@
 {
   "name": "pnpm-upgrade-interactive",
   "version": "1.0.4",
-  "description": "Interactive upgrade tool for pnpm, inspired by yarn upgrade-interactive",
+  "description": "Interactive CLI tool for upgrading pnpm dependencies with ease. Inspired by yarn upgrade-interactive. Supports monorepos, workspaces, and batch upgrades.",
   "main": "dist/index.js",
   "bin": "./dist/cli.js",
   "scripts": {
@@ -23,12 +23,21 @@
     "upgrade",
     "interactive",
     "cli",
-    "package-manager"
+    "package-manager",
+    "dependency-management",
+    "yarn-upgrade-interactive",
+    "monorepo",
+    "workspace",
+    "batch-upgrade"
   ],
   "license": "MIT",
+  "homepage": "https://github.com/donfear/pnpm-upgrade-interactive#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/donfear/pnpm-upgrade-interactive"
+  },
+  "bugs": {
+    "url": "https://github.com/donfear/pnpm-upgrade-interactive/issues"
   },
   "files": [
     "dist",
