@@ -2,6 +2,7 @@
   "name": "pnpm-upgrade-interactive",
   "version": "1.0.3",
   "description": "Interactive upgrade tool for pnpm, inspired by yarn upgrade-interactive",
+  "type": "module",
   "main": "dist/index.js",
   "bin": "./dist/cli.js",
   "scripts": {
@@ -13,7 +14,9 @@
     "link": "pnpm build && pnpm link --global",
     "version:patch": "pnpm version patch",
     "version:minor": "pnpm version minor",
-    "version:major": "pnpm version major"
+    "version:major": "pnpm version major",
+    "format": "prettier --write src/**/*.ts",
+    "format:check": "prettier --check src/**/*.ts"
   },
   "author": "Donfear",
   "keywords": [
@@ -37,6 +40,7 @@
     "@types/keypress": "^2.0.30",
     "@types/node": "^20.19.17",
     "@types/semver": "^7.7.1",
+    "prettier": "^3.6.2",
     "typescript": "^5.9.2"
   },
   "dependencies": {
