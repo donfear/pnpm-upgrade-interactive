@@ -9,11 +9,10 @@
     "dev": "tsc --watch",
     "start": "node dist/cli.js",
     "prepare": "pnpm build",
-    "test": "cd example && node ../dist/cli.js",
     "link": "pnpm build && pnpm link --global",
-    "version:patch": "pnpm version patch",
-    "version:minor": "pnpm version minor",
-    "version:major": "pnpm version major",
+    "version:patch": "pnpm version patch && git push && git push --tags",
+    "version:minor": "pnpm version minor && git push && git push --tags",
+    "version:major": "pnpm version major && git push && git push --tags",
     "format": "prettier --write src/**/*.ts",
     "format:check": "prettier --check src/**/*.ts"
   },
@@ -61,6 +60,6 @@
     "table": "^6.9.0"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=20.0.0"
   }
 }
