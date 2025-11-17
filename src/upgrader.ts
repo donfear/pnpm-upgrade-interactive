@@ -155,12 +155,6 @@ export class PackageUpgrader {
         spinner.text = `Updated package.json for ${choices.length} ${type}`
       }
 
-      // Update workspace lockfile after modifying package.json
-      if (modified && workspaceRoot) {
-        spinner.text = 'Updating workspace lockfile...'
-        executeCommand('pnpm install', workspaceRoot)
-      }
-
       spinner.succeed(`Upgraded ${choices.length} ${type} in ${packageDir}`)
 
       // Show which packages were upgraded
