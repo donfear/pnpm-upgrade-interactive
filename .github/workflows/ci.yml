@@ -28,7 +28,9 @@ jobs:
         run: corepack enable
 
       - name: Prepare pnpm
-        run: corepack prepare pnpm --activate
+        run: |
+          PACKAGE_MANAGER=$(node -p "require('./package.json').packageManager")
+          corepack prepare $PACKAGE_MANAGER --activate
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
