@@ -169,8 +169,13 @@ export class InteractiveUI {
             stateManager.bulkUnselectAll(states)
             break
           case 'resize':
-            if (stateManager.updateTerminalHeight(action.height)) {
+            const heightChanged = stateManager.updateTerminalHeight(action.height)
+            if (heightChanged) {
               stateManager.resetForResize()
+            } else {
+              // Even if height didn't change, width might have changed
+              // Force a full re-render to clear any wrapping issues
+              stateManager.setInitialRender(true)
             }
             break
         }
@@ -218,6 +223,9 @@ export class InteractiveUI {
       }
 
       const handleResize = () => {
+        // On resize (width or height change), always trigger a re-render
+        // This prevents layout breaking when terminal width changes
+        // The action handler will update height and force a full re-render
         inputHandler.handleResize(this.getTerminalHeight())
       }
 
