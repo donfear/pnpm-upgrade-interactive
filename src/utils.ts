@@ -306,44 +306,69 @@ export function getOptimizedRangeVersion(
 
 export function findClosestMinorVersion(
   installedVersion: string,
-  allVersions: string[]
+  allVersions: string[],
+  minorOnly: boolean = false
 ): string | null {
   try {
-    // Find the highest version that satisfies the current range specifier
-    // This will include patch updates (e.g., ^5.9.2 will match 5.9.3)
-    const satisfyingVersions = allVersions.filter((version) => {
-      try {
-        return semver.satisfies(version, installedVersion)
-      } catch {
-        return false
-      }
-    })
-
-    if (satisfyingVersions.length === 0) {
-      return null
-    }
-
     // Get the coerced installed version for comparison
     const coercedInstalled = semver.coerce(installedVersion)
     if (!coercedInstalled) {
       return null
     }
 
-    // Filter to only versions that are greater than the installed version
-    const newerVersions = satisfyingVersions.filter((version) => {
-      try {
-        return semver.gt(version, coercedInstalled)
-      } catch {
-        return false
+    if (minorOnly) {
+      // Old behavior: only find versions with same major but higher minor (exclude patch updates)
+      const installedMajor = semver.major(coercedInstalled)
+      const installedMinor = semver.minor(coercedInstalled)
+
+      // Find versions with same major but higher minor
+      const sameMajorVersions = allVersions.filter((version) => {
+        try {
+          const major = semver.major(version)
+          const minor = semver.minor(version)
+          return major === installedMajor && minor > installedMinor
+        } catch {
+          return false
+        }
+      })
+
+      if (sameMajorVersions.length === 0) {
+        return null
       }
-    })
 
-    if (newerVersions.length === 0) {
-      return null
+      // Return the highest minor version
+      return sameMajorVersions.sort(semver.rcompare)[0]
+    } else {
+      // New behavior: find the highest version that satisfies the current range specifier
+      // This will include patch updates (e.g., ^5.9.2 will match 5.9.3)
+      const satisfyingVersions = allVersions.filter((version) => {
+        try {
+          return semver.satisfies(version, installedVersion)
+        } catch {
+          return false
+        }
+      })
+
+      if (satisfyingVersions.length === 0) {
+        return null
+      }
+
+      // Filter to only versions that are greater than the installed version
+      const newerVersions = satisfyingVersions.filter((version) => {
+        try {
+          return semver.gt(version, coercedInstalled)
+        } catch {
+          return false
+        }
+      })
+
+      if (newerVersions.length === 0) {
+        return null
+      }
+
+      // Return the highest version that satisfies the range
+      return newerVersions.sort(semver.rcompare)[0]
     }
-
-    // Return the highest version that satisfies the range
-    return newerVersions.sort(semver.rcompare)[0]
   } catch {
     return null
   }

@@ -60,8 +60,11 @@ The tool will scan your entire workspace (including monorepos), find outdated pa
 - `-e, --exclude <patterns>`: Skip directories matching these regex patterns (comma-separated)
 - `--include-peer-deps`: Include peer dependencies in upgrade process (default: false)
 - `--include-optional-deps`: Include optional dependencies in upgrade process (default: false)
+- `--minor`: Show minor updates in range column instead of patch updates (default: false)
 
 **Note:** By default, the tool only processes `dependencies` and `devDependencies`. Both `peerDependencies` and `optionalDependencies` are excluded by default and must be explicitly included with their respective flags.
+
+**Update Detection:** By default, the tool shows patch updates in the range column (e.g., `^5.9.2` → `5.9.3`). Use `--minor` to show minor updates in the range column instead (e.g., `^5.9.2` → `5.10.0`).
 
 Examples:
 
@@ -77,6 +80,9 @@ pnpm-upgrade-interactive --include-optional-deps
 
 # Include both peer and optional dependencies
 pnpm-upgrade-interactive --include-peer-deps --include-optional-deps
+
+# Show minor updates in range column instead of patch updates (e.g., 5.9.2 → 5.10.0 instead of 5.9.3)
+pnpm-upgrade-interactive --minor
 
 # Skip example and test directories
 pnpm-upgrade-interactive --exclude "example,test"

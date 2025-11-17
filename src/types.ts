@@ -42,6 +42,7 @@ export interface PnpmUpgradeOptions {
   excludePatterns?: string[]
   includePeerDeps?: boolean
   includeOptionalDeps?: boolean
+  minorOnly?: boolean // If true, show minor updates in range column instead of patch updates
 }
 
 export interface PackageJson {
