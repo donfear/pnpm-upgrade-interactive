@@ -55,7 +55,7 @@ export class PackageUpgrader {
   private async upgradeChoiceGroup(
     choices: PackageUpgradeChoice[],
     packageJsonPath: string,
-    type: 'dependencies' | 'devDependencies' | 'optionalDependencies'
+    type: 'dependencies' | 'devDependencies' | 'optionalDependencies' | 'peerDependencies'
   ): Promise<void> {
     // Validate that package.json exists
     if (!existsSync(packageJsonPath)) {

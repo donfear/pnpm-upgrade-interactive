@@ -162,16 +162,32 @@ export function findAllPackageJsonFiles(
   return packageJsonFiles
 }
 
+export interface CollectDependenciesOptions {
+  includePeerDeps?: boolean
+  includeOptionalDeps?: boolean
+}
+
 export function collectAllDependencies(
-  packageJsonFiles: string[]
+  packageJsonFiles: string[],
+  options: CollectDependenciesOptions = {}
 ): Array<{ name: string; version: string; type: string; packageJsonPath: string }> {
+  const { includePeerDeps = false, includeOptionalDeps = false } = options
   const allDeps: Array<{ name: string; version: string; type: string; packageJsonPath: string }> =
     []
 
   for (const packageJsonPath of packageJsonFiles) {
     try {
       const packageJson = readPackageJson(packageJsonPath)
-      const depTypes = ['dependencies', 'devDependencies', 'optionalDependencies'] as const
+      const depTypes: Array<
+        'dependencies' | 'devDependencies' | 'optionalDependencies' | 'peerDependencies'
+      > = ['dependencies', 'devDependencies']
+
+      if (includeOptionalDeps) {
+        depTypes.push('optionalDependencies')
+      }
+      if (includePeerDeps) {
+        depTypes.push('peerDependencies')
+      }
 
       for (const depType of depTypes) {
         const deps = packageJson[depType]
@@ -179,7 +195,7 @@ export function collectAllDependencies(
           for (const [name, version] of Object.entries(deps)) {
             allDeps.push({
               name,
-              version,
+              version: version as string,
               type: depType,
               packageJsonPath,
             })

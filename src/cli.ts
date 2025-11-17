@@ -12,6 +12,8 @@ program
   .version('1.0.0')
   .option('-d, --dir <directory>', 'specify directory to run in', process.cwd())
   .option('-e, --exclude <patterns>', 'exclude paths matching regex patterns (comma-separated)', '')
+  .option('--include-peer-deps', 'include peer dependencies in upgrade process')
+  .option('--include-optional-deps', 'include optional dependencies in upgrade process')
   .action(async (options) => {
     console.log(chalk.bold.blue('🚀 pnpm-upgrade-interactive\n'))
 
@@ -22,7 +24,17 @@ program
           .filter(Boolean)
       : []
 
-    const upgrader = new PnpmUpgradeInteractive(options.dir, excludePatterns)
+    // Commander.js: boolean flags are undefined if not provided, true if provided
+    // Both flags default to false (opt-in)
+    const includePeerDeps = options.includePeerDeps === true
+    const includeOptionalDeps = options.includeOptionalDeps === true
+
+    const upgrader = new PnpmUpgradeInteractive({
+      cwd: options.dir,
+      excludePatterns,
+      includePeerDeps,
+      includeOptionalDeps,
+    })
     await upgrader.run()
   })
 
