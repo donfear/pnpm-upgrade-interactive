@@ -309,32 +309,41 @@ export function findClosestMinorVersion(
   allVersions: string[]
 ): string | null {
   try {
-    // Coerce the version specifier to get a valid semver version
-    const coercedVersion = semver.coerce(installedVersion)
-    if (!coercedVersion) {
-      return null
-    }
-
-    const installedMajor = semver.major(coercedVersion)
-    const installedMinor = semver.minor(coercedVersion)
-
-    // Find versions with same major but higher minor
-    const sameMajorVersions = allVersions.filter((version) => {
+    // Find the highest version that satisfies the current range specifier
+    // This will include patch updates (e.g., ^5.9.2 will match 5.9.3)
+    const satisfyingVersions = allVersions.filter((version) => {
       try {
-        const major = semver.major(version)
-        const minor = semver.minor(version)
-        return major === installedMajor && minor > installedMinor
+        return semver.satisfies(version, installedVersion)
       } catch {
         return false
       }
     })
 
-    if (sameMajorVersions.length === 0) {
+    if (satisfyingVersions.length === 0) {
       return null
     }
 
-    // Return the highest minor version (lowest patch)
-    return sameMajorVersions.sort(semver.rcompare)[0]
+    // Get the coerced installed version for comparison
+    const coercedInstalled = semver.coerce(installedVersion)
+    if (!coercedInstalled) {
+      return null
+    }
+
+    // Filter to only versions that are greater than the installed version
+    const newerVersions = satisfyingVersions.filter((version) => {
+      try {
+        return semver.gt(version, coercedInstalled)
+      } catch {
+        return false
+      }
+    })
+
+    if (newerVersions.length === 0) {
+      return null
+    }
+
+    // Return the highest version that satisfies the range
+    return newerVersions.sort(semver.rcompare)[0]
   } catch {
     return null
   }
