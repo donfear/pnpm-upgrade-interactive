@@ -28,11 +28,6 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
 
-      - name: Install pnpm
-        run: |
-          PACKAGE_MANAGER=$(node -p "require('./package.json').packageManager")
-          corepack prepare $PACKAGE_MANAGER --activate
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
