@@ -130,12 +130,20 @@ export class InteractiveUI {
     return choices
   }
 
+  private getTerminalHeight(): number {
+    // Check if stdout is a TTY and has rows property
+    if (process.stdout.isTTY && typeof process.stdout.rows === 'number' && process.stdout.rows > 0) {
+      return process.stdout.rows
+    }
+    return 24 // Fallback default
+  }
+
   private async interactiveTableSelector(
     selectionStates: PackageSelectionState[]
   ): Promise<PackageSelectionState[]> {
     return new Promise((resolve) => {
       const states = [...selectionStates]
-      const stateManager = new StateManager()
+      const stateManager = new StateManager(0, this.getTerminalHeight())
 
       const handleAction = (action: InputAction) => {
         switch (action.type) {
@@ -161,8 +169,13 @@ export class InteractiveUI {
             stateManager.bulkUnselectAll(states)
             break
           case 'resize':
-            if (stateManager.updateTerminalHeight(action.height)) {
+            const heightChanged = stateManager.updateTerminalHeight(action.height)
+            if (heightChanged) {
               stateManager.resetForResize()
+            } else {
+              // Even if height didn't change, width might have changed
+              // Force a full re-render to clear any wrapping issues
+              stateManager.setInitialRender(true)
             }
             break
         }
@@ -210,7 +223,10 @@ export class InteractiveUI {
       }
 
       const handleResize = () => {
-        inputHandler.handleResize(process.stdout.rows || 24)
+        // On resize (width or height change), always trigger a re-render
+        // This prevents layout breaking when terminal width changes
+        // The action handler will update height and force a full re-render
+        inputHandler.handleResize(this.getTerminalHeight())
       }
 
       // Setup keypress handling
@@ -224,6 +240,13 @@ export class InteractiveUI {
 
         // Setup resize handler
         process.on('SIGWINCH', handleResize)
+
+        // Update terminal height directly before initial render to ensure correct dimensions
+        // This handles cases where process.stdout.rows might not be accurate at startup
+        const currentHeight = this.getTerminalHeight()
+        if (stateManager.updateTerminalHeight(currentHeight)) {
+          stateManager.resetForResize()
+        }
 
         // Initial render
         renderInterface()

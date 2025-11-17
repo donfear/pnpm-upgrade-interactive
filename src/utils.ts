@@ -162,16 +162,32 @@ export function findAllPackageJsonFiles(
   return packageJsonFiles
 }
 
+export interface CollectDependenciesOptions {
+  includePeerDeps?: boolean
+  includeOptionalDeps?: boolean
+}
+
 export function collectAllDependencies(
-  packageJsonFiles: string[]
+  packageJsonFiles: string[],
+  options: CollectDependenciesOptions = {}
 ): Array<{ name: string; version: string; type: string; packageJsonPath: string }> {
+  const { includePeerDeps = false, includeOptionalDeps = false } = options
   const allDeps: Array<{ name: string; version: string; type: string; packageJsonPath: string }> =
     []
 
   for (const packageJsonPath of packageJsonFiles) {
     try {
       const packageJson = readPackageJson(packageJsonPath)
-      const depTypes = ['dependencies', 'devDependencies', 'optionalDependencies'] as const
+      const depTypes: Array<
+        'dependencies' | 'devDependencies' | 'optionalDependencies' | 'peerDependencies'
+      > = ['dependencies', 'devDependencies']
+
+      if (includeOptionalDeps) {
+        depTypes.push('optionalDependencies')
+      }
+      if (includePeerDeps) {
+        depTypes.push('peerDependencies')
+      }
 
       for (const depType of depTypes) {
         const deps = packageJson[depType]
@@ -179,7 +195,7 @@ export function collectAllDependencies(
           for (const [name, version] of Object.entries(deps)) {
             allDeps.push({
               name,
-              version,
+              version: version as string,
               type: depType,
               packageJsonPath,
             })
@@ -293,16 +309,16 @@ export function findClosestMinorVersion(
   allVersions: string[]
 ): string | null {
   try {
-    // Coerce the version specifier to get a valid semver version
-    const coercedVersion = semver.coerce(installedVersion)
-    if (!coercedVersion) {
+    // Get the coerced installed version for comparison
+    const coercedInstalled = semver.coerce(installedVersion)
+    if (!coercedInstalled) {
       return null
     }
 
-    const installedMajor = semver.major(coercedVersion)
-    const installedMinor = semver.minor(coercedVersion)
+    const installedMajor = semver.major(coercedInstalled)
+    const installedMinor = semver.minor(coercedInstalled)
 
-    // Find versions with same major but higher minor
+    // First, try to find versions with same major but higher minor (minor updates)
     const sameMajorVersions = allVersions.filter((version) => {
       try {
         const major = semver.major(version)
@@ -313,12 +329,40 @@ export function findClosestMinorVersion(
       }
     })
 
-    if (sameMajorVersions.length === 0) {
+    if (sameMajorVersions.length > 0) {
+      // Return the highest minor version
+      return sameMajorVersions.sort(semver.rcompare)[0]
+    }
+
+    // If no minor update exists, fall back to patch updates
+    // Find the highest version that satisfies the current range specifier
+    const satisfyingVersions = allVersions.filter((version) => {
+      try {
+        return semver.satisfies(version, installedVersion)
+      } catch {
+        return false
+      }
+    })
+
+    if (satisfyingVersions.length === 0) {
       return null
     }
 
-    // Return the highest minor version (lowest patch)
-    return sameMajorVersions.sort(semver.rcompare)[0]
+    // Filter to only versions that are greater than the installed version
+    const newerVersions = satisfyingVersions.filter((version) => {
+      try {
+        return semver.gt(version, coercedInstalled)
+      } catch {
+        return false
+      }
+    })
+
+    if (newerVersions.length === 0) {
+      return null
+    }
+
+    // Return the highest version that satisfies the range (patch update)
+    return newerVersions.sort(semver.rcompare)[0]
   } catch {
     return null
   }

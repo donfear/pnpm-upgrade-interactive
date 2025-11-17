@@ -57,11 +57,33 @@ The tool will scan your entire workspace (including monorepos), find outdated pa
 ### Command line options
 
 - `-d, --dir <directory>`: Run in a specific directory (default: current directory)
-- `-e, --exclude <patterns>`: Skip directories matching these regex patterns
+- `-e, --exclude <patterns>`: Skip directories matching these regex patterns (comma-separated)
+- `--include-peer-deps`: Include peer dependencies in upgrade process (default: false)
+- `--include-optional-deps`: Include optional dependencies in upgrade process (default: false)
+- `--minor`: Show minor updates in range column instead of patch updates (default: false)
+
+**Note:** By default, the tool only processes `dependencies` and `devDependencies`. Both `peerDependencies` and `optionalDependencies` are excluded by default and must be explicitly included with their respective flags.
+
+**Update Detection:** By default, the tool shows patch updates in the range column (e.g., `^5.9.2` → `5.9.3`). Use `--minor` to show minor updates in the range column instead (e.g., `^5.9.2` → `5.10.0`).
 
 Examples:
 
 ```bash
+# Basic usage - scans only dependencies and devDependencies
+pnpm-upgrade-interactive
+
+# Include peer dependencies in the upgrade process
+pnpm-upgrade-interactive --include-peer-deps
+
+# Include optional dependencies
+pnpm-upgrade-interactive --include-optional-deps
+
+# Include both peer and optional dependencies
+pnpm-upgrade-interactive --include-peer-deps --include-optional-deps
+
+# Show minor updates in range column instead of patch updates (e.g., 5.9.2 → 5.10.0 instead of 5.9.3)
+pnpm-upgrade-interactive --minor
+
 # Skip example and test directories
 pnpm-upgrade-interactive --exclude "example,test"
 
@@ -70,14 +92,18 @@ pnpm-upgrade-interactive -e "example/.*,.*\.test\..*"
 
 # Run in a different directory
 pnpm-upgrade-interactive --dir ../my-other-project
+
+# Combine multiple options
+pnpm-upgrade-interactive --dir ./packages --include-peer-deps --exclude "test,dist"
 ```
 
 ### How it works
 
-1. **Scans your project** - Finds all package.json files recursively
-2. **Checks for updates** - Queries npm registry for latest versions
-3. **Shows you options** - Interactive UI lets you pick what to upgrade
-4. **Updates safely** - Modifies package.json
+1. **Scans your project** - Finds all package.json files recursively (respects exclude patterns)
+2. **Collects dependencies** - Gathers dependencies based on your options (dependencies, devDependencies, and optionally peerDependencies/optionalDependencies)
+3. **Checks for updates** - Queries npm registry for latest versions
+4. **Shows you options** - Interactive UI lets you pick what to upgrade (minor updates or latest versions)
+5. **Updates safely** - Modifies package.json files and runs `pnpm install` to update lockfile
 
 ## License
 

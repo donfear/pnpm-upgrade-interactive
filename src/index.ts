@@ -3,16 +3,19 @@ import { PackageDetector } from './package-detector'
 import { InteractiveUI } from './interactive-ui'
 import { PackageUpgrader } from './upgrader'
 import { checkPnpmInstalled } from './utils'
+import { PnpmUpgradeOptions } from './types'
 
 export class PnpmUpgradeInteractive {
   private detector: PackageDetector
   private ui: InteractiveUI
   private upgrader: PackageUpgrader
+  private dryRun: boolean
 
-  constructor(cwd?: string, excludePatterns?: string[]) {
-    this.detector = new PackageDetector(cwd, excludePatterns)
+  constructor(options?: PnpmUpgradeOptions) {
+    this.detector = new PackageDetector(options)
     this.ui = new InteractiveUI()
-    this.upgrader = new PackageUpgrader()
+    this.dryRun = options?.dryRun === true
+    this.upgrader = new PackageUpgrader(this.dryRun)
   }
 
   public async run(): Promise<void> {

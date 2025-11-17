@@ -1,5 +1,5 @@
 import * as semver from 'semver'
-import { PackageInfo, PackageJson } from './types'
+import { PackageInfo, PackageJson, PnpmUpgradeOptions } from './types'
 import {
   findPackageJson,
   readPackageJson,
@@ -15,12 +15,18 @@ import {
 export class PackageDetector {
   private packageJsonPath: string | null = null
   private packageJson: PackageJson | null = null
+  private cwd: string
+  private excludePatterns: string[]
+  private includePeerDeps: boolean
+  private includeOptionalDeps: boolean
 
-  constructor(
-    private cwd: string = process.cwd(),
-    private excludePatterns: string[] = []
-  ) {
-    this.packageJsonPath = findPackageJson(cwd)
+  constructor(options?: PnpmUpgradeOptions) {
+    this.cwd = options?.cwd || process.cwd()
+    this.excludePatterns = options?.excludePatterns || []
+    // Explicitly check for true to ensure false/undefined both become false (opt-in)
+    this.includePeerDeps = options?.includePeerDeps === true
+    this.includeOptionalDeps = options?.includeOptionalDeps === true
+    this.packageJsonPath = findPackageJson(this.cwd)
     if (this.packageJsonPath) {
       this.packageJson = readPackageJson(this.packageJsonPath)
     }
@@ -44,7 +50,10 @@ export class PackageDetector {
 
     // Step 2: Collect all dependencies from package.json files
     this.showProgress('📋 Collecting all dependencies...')
-    const allDepsRaw = collectAllDependencies(allPackageJsonFiles)
+    const allDepsRaw = collectAllDependencies(allPackageJsonFiles, {
+      includePeerDeps: this.includePeerDeps,
+      includeOptionalDeps: this.includeOptionalDeps,
+    })
 
     // Filter out workspace-linked dependencies (like "workspace:*", "^workspace:*", etc.)
     const allDeps = allDepsRaw.filter((dep) => !this.isWorkspaceReference(dep.version))
@@ -77,6 +86,7 @@ export class PackageDetector {
           const { latestVersion, allVersions } = packageData
 
           // Find closest minor version (same major, higher minor) that satisfies the current range
+          // Falls back to patch updates if no minor updates are available
           const closestMinorVersion = findClosestMinorVersion(dep.version, allVersions)
 
           const installedClean = semver.coerce(dep.version)?.version || dep.version
@@ -94,7 +104,7 @@ export class PackageDetector {
             currentVersion: dep.version, // Keep original version specifier with prefix
             rangeVersion: closestMinorVersion || dep.version,
             latestVersion,
-            type: dep.type as 'dependencies' | 'devDependencies' | 'optionalDependencies',
+            type: dep.type as 'dependencies' | 'devDependencies' | 'optionalDependencies' | 'peerDependencies',
             packageJsonPath: dep.packageJsonPath,
             isOutdated,
             hasRangeUpdate,
@@ -107,7 +117,7 @@ export class PackageDetector {
             currentVersion: dep.version,
             rangeVersion: 'unknown',
             latestVersion: 'unknown',
-            type: dep.type as 'dependencies' | 'devDependencies' | 'optionalDependencies',
+            type: dep.type as 'dependencies' | 'devDependencies' | 'optionalDependencies' | 'peerDependencies',
             packageJsonPath: dep.packageJsonPath,
             isOutdated: false,
             hasRangeUpdate: false,
