@@ -15,6 +15,7 @@ program
   .option('--include-peer-deps', 'include peer dependencies in upgrade process')
   .option('--include-optional-deps', 'include optional dependencies in upgrade process')
   .option('--minor', 'show minor updates in range column instead of patch updates')
+  .option('--dry-run', 'show what would be executed without actually running pnpm install')
   .action(async (options) => {
     console.log(chalk.bold.blue('🚀 pnpm-upgrade-interactive\n'))
 
@@ -30,6 +31,7 @@ program
     const includePeerDeps = options.includePeerDeps === true
     const includeOptionalDeps = options.includeOptionalDeps === true
     const minorOnly = options.minor === true
+    const dryRun = options.dryRun === true
 
     const upgrader = new PnpmUpgradeInteractive({
       cwd: options.dir,
@@ -37,6 +39,7 @@ program
       includePeerDeps,
       includeOptionalDeps,
       minorOnly,
+      dryRun,
     })
     await upgrader.run()
   })

@@ -9,11 +9,13 @@ export class PnpmUpgradeInteractive {
   private detector: PackageDetector
   private ui: InteractiveUI
   private upgrader: PackageUpgrader
+  private dryRun: boolean
 
   constructor(options?: PnpmUpgradeOptions) {
     this.detector = new PackageDetector(options)
     this.ui = new InteractiveUI()
-    this.upgrader = new PackageUpgrader()
+    this.dryRun = options?.dryRun === true
+    this.upgrader = new PackageUpgrader(this.dryRun)
   }
 
   public async run(): Promise<void> {

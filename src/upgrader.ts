@@ -1,10 +1,17 @@
 import ora from 'ora'
 import chalk from 'chalk'
 import { existsSync, writeFileSync } from 'fs'
+import { dirname } from 'path'
 import { PackageInfo, UpgradeOptions, PackageUpgradeChoice } from './types'
 import { executeCommand, findWorkspaceRoot, readPackageJson } from './utils'
 
 export class PackageUpgrader {
+  private dryRun: boolean
+
+  constructor(dryRun: boolean = false) {
+    this.dryRun = dryRun
+  }
+
   public async upgradePackages(
     choices: PackageUpgradeChoice[],
     packageInfos: PackageInfo[]
@@ -28,6 +35,42 @@ export class PackageUpgrader {
     // Count unique packages upgraded
     const uniquePackages = new Set(choices.map((c) => c.name))
     console.log(chalk.green(`\n✅ Successfully upgraded ${uniquePackages.size} package(s)!`))
+
+    // Execute pnpm install after all upgrades are complete
+    await this.runPnpmInstall(choices, packageInfos)
+  }
+
+  private async runPnpmInstall(
+    choices: PackageUpgradeChoice[],
+    packageInfos: PackageInfo[]
+  ): Promise<void> {
+    if (choices.length === 0) {
+      return
+    }
+
+    // Determine the directory to run pnpm install in
+    // Use workspace root if it exists, otherwise use the directory of the first package.json
+    const firstPackageJsonPath = choices[0].packageJsonPath
+    const firstPackageDir = dirname(firstPackageJsonPath)
+    const workspaceRoot = findWorkspaceRoot(firstPackageDir)
+    const installDir = workspaceRoot || firstPackageDir
+
+    const spinner = ora('Running pnpm install...').start()
+
+    try {
+      if (this.dryRun) {
+        spinner.stop()
+        console.log(chalk.yellow(`\n[DRY RUN] Would execute: pnpm install`))
+        console.log(chalk.yellow(`[DRY RUN] In directory: ${installDir}`))
+      } else {
+        executeCommand('pnpm install', installDir)
+        spinner.succeed('Successfully ran pnpm install')
+      }
+    } catch (error) {
+      spinner.fail('Failed to run pnpm install')
+      console.error(chalk.red(`Error: ${error}`))
+      throw error
+    }
   }
 
   private groupChoicesByFileAndType(
