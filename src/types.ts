@@ -42,7 +42,6 @@ export interface PnpmUpgradeOptions {
   excludePatterns?: string[]
   includePeerDeps?: boolean
   includeOptionalDeps?: boolean
-  minorOnly?: boolean // If true, show minor updates in range column instead of patch updates
   dryRun?: boolean // If true, show what would be executed without actually running pnpm install
 }
 

@@ -19,7 +19,6 @@ export class PackageDetector {
   private excludePatterns: string[]
   private includePeerDeps: boolean
   private includeOptionalDeps: boolean
-  private minorOnly: boolean
 
   constructor(options?: PnpmUpgradeOptions) {
     this.cwd = options?.cwd || process.cwd()
@@ -27,7 +26,6 @@ export class PackageDetector {
     // Explicitly check for true to ensure false/undefined both become false (opt-in)
     this.includePeerDeps = options?.includePeerDeps === true
     this.includeOptionalDeps = options?.includeOptionalDeps === true
-    this.minorOnly = options?.minorOnly === true
     this.packageJsonPath = findPackageJson(this.cwd)
     if (this.packageJsonPath) {
       this.packageJson = readPackageJson(this.packageJsonPath)
@@ -88,7 +86,8 @@ export class PackageDetector {
           const { latestVersion, allVersions } = packageData
 
           // Find closest minor version (same major, higher minor) that satisfies the current range
-          const closestMinorVersion = findClosestMinorVersion(dep.version, allVersions, this.minorOnly)
+          // Falls back to patch updates if no minor updates are available
+          const closestMinorVersion = findClosestMinorVersion(dep.version, allVersions)
 
           const installedClean = semver.coerce(dep.version)?.version || dep.version
           const minorClean = closestMinorVersion
