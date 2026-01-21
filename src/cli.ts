@@ -5,6 +5,7 @@ import chalk from 'chalk'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { PnpmUpgradeInteractive } from './index'
+import { checkForUpdateAsync } from './version-check'
 
 const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'))
 
@@ -20,6 +21,9 @@ program
   .option('-o, --optional', 'include optional dependencies in upgrade process')
   .action(async (options) => {
     console.log(chalk.bold.blue(`🚀 pnpm-upgrade-interactive v${packageJson.version}\n`))
+
+    // Check for updates in the background (non-blocking)
+    const updateCheckPromise = checkForUpdateAsync('pnpm-upgrade-interactive', packageJson.version)
 
     const excludePatterns = options.exclude
       ? options.exclude
@@ -40,6 +44,37 @@ program
       includeOptionalDeps,
     })
     await upgrader.run()
+
+    // After the main flow completes, check if there's an update available
+    const updateCheck = await updateCheckPromise
+    if (updateCheck?.isOutdated) {
+      console.log('')
+      console.log(
+        chalk.yellow('┌' + '─'.repeat(78) + '┐')
+      )
+      console.log(
+        chalk.yellow('│') +
+          ' ' +
+          chalk.bold.yellow('Update available! ') +
+          chalk.gray(`${updateCheck.currentVersion}`) +
+          ' → ' +
+          chalk.green(`${updateCheck.latestVersion}`) +
+          ' '.repeat(78 - 19 - updateCheck.currentVersion.length - 3 - updateCheck.latestVersion.length - 1) +
+          chalk.yellow('│')
+      )
+      console.log(
+        chalk.yellow('│') +
+          ' ' +
+          chalk.gray('Run: ') +
+          chalk.cyan(updateCheck.updateCommand) +
+          ' '.repeat(78 - 6 - updateCheck.updateCommand.length - 1) +
+          chalk.yellow('│')
+      )
+      console.log(
+        chalk.yellow('└' + '─'.repeat(78) + '┘')
+      )
+      console.log('')
+    }
   })
 
 // Handle uncaught errors gracefully
