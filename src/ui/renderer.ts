@@ -375,24 +375,26 @@ export class UIRenderer {
 
     // Title with package name
     const title = ` ℹ️  ${state.name}`
-    const titlePadding = modalWidth - 4 - this.stripAnsi(title).length
+    const titleLength = this.stripAnsi(title).length
+    const titlePadding = Math.max(0, modalWidth - 2 - titleLength)
     lines.push(
       ' '.repeat(padding) +
         chalk.gray('│') +
         chalk.cyan.bold(title) +
-        ' '.repeat(Math.max(0, titlePadding)) +
+        ' '.repeat(titlePadding) +
         chalk.gray('│')
     )
 
     // License and author line
     const authorLicense = `${state.author || 'Unknown'} • ${state.license || 'MIT'}`
-    const authorPadding = modalWidth - 4 - authorLicense.length
+    const authorLength = authorLicense.length
+    const authorPadding = Math.max(0, modalWidth - 3 - authorLength)
     lines.push(
       ' '.repeat(padding) +
         chalk.gray('│') +
         ' ' +
         chalk.gray(authorLicense) +
-        ' '.repeat(Math.max(0, authorPadding)) +
+        ' '.repeat(authorPadding) +
         chalk.gray('│')
     )
 
@@ -404,26 +406,28 @@ export class UIRenderer {
       state.selectedOption === 'range' ? state.rangeVersion : state.latestVersion
     )
     const versionText = `Current: ${currentVersion} → Target: ${targetVersion}`
-    const versionPadding = modalWidth - 4 - this.stripAnsi(versionText).length
+    const versionLength = this.stripAnsi(versionText).length
+    const versionPadding = Math.max(0, modalWidth - 3 - versionLength)
     lines.push(
       ' '.repeat(padding) +
         chalk.gray('│') +
         ' ' +
         versionText +
-        ' '.repeat(Math.max(0, versionPadding)) +
+        ' '.repeat(versionPadding) +
         chalk.gray('│')
     )
 
     // Weekly downloads
     if (state.weeklyDownloads !== undefined) {
       const downloadsText = `📊 ${this.formatNumber(state.weeklyDownloads)} downloads/week`
-      const downloadsPadding = modalWidth - 4 - this.stripAnsi(downloadsText).length
+      const downloadsLength = this.stripAnsi(downloadsText).length
+      const downloadsPadding = Math.max(0, modalWidth - 3 - downloadsLength)
       lines.push(
         ' '.repeat(padding) +
           chalk.gray('│') +
           ' ' +
           chalk.blue(downloadsText) +
-          ' '.repeat(Math.max(0, downloadsPadding)) +
+          ' '.repeat(downloadsPadding) +
           chalk.gray('│')
       )
     }
@@ -433,13 +437,14 @@ export class UIRenderer {
       lines.push(' '.repeat(padding) + chalk.gray('├' + '─'.repeat(modalWidth - 2) + '┤'))
       const descriptionLines = this.wrapText(state.description, modalWidth - 4)
       for (const descLine of descriptionLines) {
-        const padding2 = modalWidth - 3 - descLine.length
+        const descLength = descLine.length
+        const descPadding = Math.max(0, modalWidth - 3 - descLength)
         lines.push(
           ' '.repeat(padding) +
             chalk.gray('│') +
             ' ' +
             chalk.white(descLine) +
-            ' '.repeat(Math.max(0, padding2)) +
+            ' '.repeat(descPadding) +
             chalk.gray('│')
         )
       }
@@ -451,12 +456,13 @@ export class UIRenderer {
       const repoLabel = 'Changelog:'
       const repoUrl = state.repository.substring(0, modalWidth - 20)
       const repoText = `  ${repoLabel} ${chalk.blue.underline(repoUrl)}`
-      const repoPadding = modalWidth - 4 - this.stripAnsi(repoText).length
+      const repoLength = this.stripAnsi(repoText).length
+      const repoPadding = Math.max(0, modalWidth - 2 - repoLength)
       lines.push(
         ' '.repeat(padding) +
           chalk.gray('│') +
           repoText +
-          ' '.repeat(Math.max(0, repoPadding)) +
+          ' '.repeat(repoPadding) +
           chalk.gray('│')
       )
     }
@@ -468,12 +474,13 @@ export class UIRenderer {
       const homeLabel = 'Homepage:'
       const homeUrl = state.homepage.substring(0, modalWidth - 20)
       const homeText = `  ${homeLabel} ${chalk.blue.underline(homeUrl)}`
-      const homePadding = modalWidth - 4 - this.stripAnsi(homeText).length
+      const homeLength = this.stripAnsi(homeText).length
+      const homePadding = Math.max(0, modalWidth - 2 - homeLength)
       lines.push(
         ' '.repeat(padding) +
           chalk.gray('│') +
           homeText +
-          ' '.repeat(Math.max(0, homePadding)) +
+          ' '.repeat(homePadding) +
           chalk.gray('│')
       )
     }
