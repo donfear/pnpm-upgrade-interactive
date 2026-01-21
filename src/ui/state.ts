@@ -154,7 +154,10 @@ export class StateManager {
     // Ensure scrollOffset doesn't go negative or beyond bounds
     this.uiState.scrollOffset = Math.max(
       0,
-      Math.min(this.uiState.scrollOffset, Math.max(0, totalVisualItems - this.uiState.maxVisibleItems))
+      Math.min(
+        this.uiState.scrollOffset,
+        Math.max(0, totalVisualItems - this.uiState.maxVisibleItems)
+      )
     )
   }
 

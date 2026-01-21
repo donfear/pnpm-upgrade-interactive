@@ -167,11 +167,7 @@ export class UIRenderer {
         chalk.bold.white('L ') +
         chalk.gray('Select all')
     )
-    output.push(
-      '  ' +
-        chalk.bold.white('U ') +
-        chalk.gray('Unselect all')
-    )
+    output.push('  ' + chalk.bold.white('U ') + chalk.gray('Unselect all'))
 
     // Show status line with item range
     const totalPackages = states.length
@@ -312,7 +308,11 @@ export class UIRenderer {
   /**
    * Render a loading state for the info modal
    */
-  renderPackageInfoLoading(state: PackageSelectionState, terminalWidth: number = 80, terminalHeight: number = 24): string[] {
+  renderPackageInfoLoading(
+    state: PackageSelectionState,
+    terminalWidth: number = 80,
+    terminalHeight: number = 24
+  ): string[] {
     const modalWidth = Math.min(terminalWidth - 6, 120)
     const padding = Math.floor((terminalWidth - modalWidth) / 2)
     const lines: string[] = []
@@ -359,7 +359,11 @@ export class UIRenderer {
    * Render a full-screen modal overlay showing package information
    * Similar to Turbo's help menu - centered with disabled background
    */
-  renderPackageInfoModal(state: PackageSelectionState, terminalWidth: number = 80, terminalHeight: number = 24): string[] {
+  renderPackageInfoModal(
+    state: PackageSelectionState,
+    terminalWidth: number = 80,
+    terminalHeight: number = 24
+  ): string[] {
     const modalWidth = Math.min(terminalWidth - 6, 120) // Leave margins
     const padding = Math.floor((terminalWidth - modalWidth) / 2)
     const lines: string[] = []
@@ -459,11 +463,7 @@ export class UIRenderer {
       const repoLength = this.stripAnsi(repoText).length
       const repoPadding = Math.max(0, modalWidth - 2 - repoLength)
       lines.push(
-        ' '.repeat(padding) +
-          chalk.gray('│') +
-          repoText +
-          ' '.repeat(repoPadding) +
-          chalk.gray('│')
+        ' '.repeat(padding) + chalk.gray('│') + repoText + ' '.repeat(repoPadding) + chalk.gray('│')
       )
     }
 
@@ -477,11 +477,7 @@ export class UIRenderer {
       const homeLength = this.stripAnsi(homeText).length
       const homePadding = Math.max(0, modalWidth - 2 - homeLength)
       lines.push(
-        ' '.repeat(padding) +
-          chalk.gray('│') +
-          homeText +
-          ' '.repeat(homePadding) +
-          chalk.gray('│')
+        ' '.repeat(padding) + chalk.gray('│') + homeText + ' '.repeat(homePadding) + chalk.gray('│')
       )
     }
 
