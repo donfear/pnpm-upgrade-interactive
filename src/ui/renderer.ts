@@ -445,37 +445,37 @@ export class UIRenderer {
       }
     }
 
+    // Changelog/Releases section (moved to middle)
+    if (state.repository) {
+      lines.push(' '.repeat(padding) + chalk.gray('├' + '─'.repeat(modalWidth - 2) + '┤'))
+      const repoLabel = 'Changelog:'
+      const repoUrl = state.repository.substring(0, modalWidth - 20)
+      const repoText = `  ${repoLabel} ${chalk.blue.underline(repoUrl)}`
+      const repoPadding = modalWidth - 4 - this.stripAnsi(repoText).length
+      lines.push(
+        ' '.repeat(padding) +
+          chalk.gray('│') +
+          repoText +
+          ' '.repeat(Math.max(0, repoPadding)) +
+          chalk.gray('│')
+      )
+    }
+
     // Links section
-    if (state.repository || state.homepage) {
+    if (state.homepage) {
       lines.push(' '.repeat(padding) + chalk.gray('├' + '─'.repeat(modalWidth - 2) + '┤'))
 
-      if (state.repository) {
-        const repoLabel = 'Releases:'
-        const repoUrl = state.repository.substring(0, modalWidth - 20)
-        const repoText = `  ${repoLabel} ${chalk.blue.underline(repoUrl)}`
-        const repoPadding = modalWidth - 4 - this.stripAnsi(repoText).length
-        lines.push(
-          ' '.repeat(padding) +
-            chalk.gray('│') +
-            repoText +
-            ' '.repeat(Math.max(0, repoPadding)) +
-            chalk.gray('│')
-        )
-      }
-
-      if (state.homepage) {
-        const homeLabel = 'Homepage:'
-        const homeUrl = state.homepage.substring(0, modalWidth - 20)
-        const homeText = `  ${homeLabel} ${chalk.blue.underline(homeUrl)}`
-        const homePadding = modalWidth - 4 - this.stripAnsi(homeText).length
-        lines.push(
-          ' '.repeat(padding) +
-            chalk.gray('│') +
-            homeText +
-            ' '.repeat(Math.max(0, homePadding)) +
-            chalk.gray('│')
-        )
-      }
+      const homeLabel = 'Homepage:'
+      const homeUrl = state.homepage.substring(0, modalWidth - 20)
+      const homeText = `  ${homeLabel} ${chalk.blue.underline(homeUrl)}`
+      const homePadding = modalWidth - 4 - this.stripAnsi(homeText).length
+      lines.push(
+        ' '.repeat(padding) +
+          chalk.gray('│') +
+          homeText +
+          ' '.repeat(Math.max(0, homePadding)) +
+          chalk.gray('│')
+      )
     }
 
     // Footer with help text

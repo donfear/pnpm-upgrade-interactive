@@ -307,23 +307,17 @@ export class InteractiveUI {
           process.stdout.write('\x1b[H')
         }
 
-        const lines = this.renderer.renderInterface(
-          states,
-          uiState.currentRow,
-          uiState.scrollOffset,
-          uiState.maxVisibleItems,
-          uiState.isInitialRender,
-          uiState.renderableItems
-        )
-
-        // Print all lines
-        lines.forEach((line) => console.log(line))
-
-        // Render info modal if open
+        // If modal is open, render only the modal with header/footer
         if (uiState.showInfoModal && uiState.infoModalRow >= 0 && uiState.infoModalRow < states.length) {
           const selectedState = states[uiState.infoModalRow]
           const terminalWidth = process.stdout.columns || 80
           const terminalHeight = this.getTerminalHeight()
+
+          // Render header
+          const headerLines: string[] = []
+          headerLines.push('  ' + chalk.bold.magenta('🚀 pnpm-upgrade-interactive'))
+          headerLines.push('')
+          headerLines.forEach((line) => console.log(line))
 
           if (uiState.isLoadingModalInfo) {
             // Show loading state
@@ -334,14 +328,32 @@ export class InteractiveUI {
             const modalLines = this.renderer.renderPackageInfoModal(selectedState, terminalWidth, terminalHeight)
             modalLines.forEach((line) => console.log(line))
           }
-        }
 
-        // Clear any remaining lines from previous render
-        if (!uiState.isInitialRender) {
+          // Clear any remaining lines from previous render
           process.stdout.write('\x1b[J')
+          stateManager.markRendered([])
+        } else {
+          // Normal list view
+          const lines = this.renderer.renderInterface(
+            states,
+            uiState.currentRow,
+            uiState.scrollOffset,
+            uiState.maxVisibleItems,
+            uiState.isInitialRender,
+            uiState.renderableItems
+          )
+
+          // Print all lines
+          lines.forEach((line) => console.log(line))
+
+          // Clear any remaining lines from previous render
+          if (!uiState.isInitialRender) {
+            process.stdout.write('\x1b[J')
+          }
+
+          stateManager.markRendered(lines)
         }
 
-        stateManager.markRendered(lines)
         stateManager.setInitialRender(false)
       }
 
