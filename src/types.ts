@@ -29,7 +29,19 @@ export interface PackageSelectionState {
   selectedOption: 'none' | 'range' | 'latest'
   hasRangeUpdate: boolean
   hasMajorUpdate: boolean
+  type: 'dependencies' | 'devDependencies' | 'optionalDependencies' | 'peerDependencies'
 }
+
+export interface GroupedPackages {
+  main: PackageSelectionState[] // dependencies + devDependencies
+  peer: PackageSelectionState[] // peerDependencies
+  optional: PackageSelectionState[] // optionalDependencies
+}
+
+export type RenderableItem =
+  | { type: 'header'; title: string; sectionType: 'main' | 'peer' | 'optional' }
+  | { type: 'spacer' }
+  | { type: 'package'; state: PackageSelectionState; originalIndex: number }
 
 export interface UpgradeOptions {
   packages: string[]
