@@ -1,5 +1,5 @@
 import chalk from 'chalk'
-import { PackageSelectionState } from '../types'
+import { PackageSelectionState, RenderableItem } from '../types'
 import { VersionUtils } from './utils'
 
 export class UIRenderer {
@@ -120,115 +120,97 @@ export class UIRenderer {
     return line
   }
 
+  renderSectionHeader(title: string, sectionType: 'main' | 'peer' | 'optional'): string {
+    const colorFn =
+      sectionType === 'main' ? chalk.cyan : sectionType === 'peer' ? chalk.magenta : chalk.yellow
+    return '  ' + colorFn.bold(title)
+  }
+
+  renderSpacer(): string {
+    return ''
+  }
+
   renderInterface(
     states: PackageSelectionState[],
     currentRow: number,
     scrollOffset: number,
     maxVisibleItems: number,
-    isInitialRender: boolean
+    isInitialRender: boolean,
+    renderableItems?: RenderableItem[]
   ): string[] {
     const output: string[] = []
 
-    if (isInitialRender) {
-      // Initial full render
-      output.push('  ' + chalk.bold.magenta('🚀 pnpm-upgrade-interactive'))
-      output.push('')
-      output.push(
+    // Header section (same for initial and incremental render)
+    output.push('  ' + chalk.bold.magenta('🚀 pnpm-upgrade-interactive'))
+    output.push('')
+    output.push(
+      '  ' +
+        chalk.bold.white('↑/↓ ') +
+        chalk.gray('Move') +
         '  ' +
-          chalk.bold.white('↑/↓ ') +
-          chalk.gray('Move') +
-          '  ' +
-          chalk.bold.white('←/→ ') +
-          chalk.gray('Select versions') +
-          '  ' +
-          chalk.bold.white('M ') +
-          chalk.gray('Select all minor') +
-          '  ' +
-          chalk.bold.white('L ') +
-          chalk.gray('Select all updates') +
-          '  ' +
-          chalk.bold.white('U ') +
-          chalk.gray('Unselect all')
-      )
+        chalk.bold.white('←/→ ') +
+        chalk.gray('Select versions') +
+        '  ' +
+        chalk.bold.white('M ') +
+        chalk.gray('Select all minor') +
+        '  ' +
+        chalk.bold.white('L ') +
+        chalk.gray('Select all updates') +
+        '  ' +
+        chalk.bold.white('U ') +
+        chalk.gray('Unselect all')
+    )
 
-      // Show status line with item range
-      const totalItems = states.length
-      const startItem = scrollOffset + 1
-      const endItem = Math.min(scrollOffset + maxVisibleItems, totalItems)
-      const statusLine =
-        totalItems > maxVisibleItems
-          ? chalk.gray(
-              `Showing ${chalk.gray(startItem)}-${chalk.gray(endItem)} of ${chalk.gray(totalItems)} packages`
-            ) +
-            '  ' +
-            chalk.gray('Enter ') +
-            chalk.gray('Confirm') +
-            '  ' +
-            chalk.gray('Esc ') +
-            chalk.gray('Cancel')
-          : chalk.gray(`Showing all ${chalk.gray(totalItems)} packages`) +
-            '  ' +
-            chalk.gray('Enter ') +
-            chalk.gray('Confirm') +
-            '  ' +
-            chalk.gray('Esc ') +
-            chalk.gray('Cancel')
-      output.push('  ' + statusLine)
-      output.push('')
+    // Show status line with item range
+    const totalPackages = states.length
+    const totalVisualItems = renderableItems?.length ?? totalPackages
+    const startItem = scrollOffset + 1
+    const endItem = Math.min(scrollOffset + maxVisibleItems, totalVisualItems)
+    const statusLine =
+      totalVisualItems > maxVisibleItems
+        ? chalk.gray(
+            `Showing ${chalk.gray(startItem)}-${chalk.gray(endItem)} of ${chalk.gray(totalPackages)} packages`
+          ) +
+          '  ' +
+          chalk.gray('Enter ') +
+          chalk.gray('Confirm') +
+          '  ' +
+          chalk.gray('Esc ') +
+          chalk.gray('Cancel')
+        : chalk.gray(`Showing all ${chalk.gray(totalPackages)} packages`) +
+          '  ' +
+          chalk.gray('Enter ') +
+          chalk.gray('Confirm') +
+          '  ' +
+          chalk.gray('Esc ') +
+          chalk.gray('Cancel')
+    output.push('  ' + statusLine)
+    output.push('')
 
-      // Render only visible packages
-      for (let i = scrollOffset; i < Math.min(scrollOffset + maxVisibleItems, states.length); i++) {
-        const line = this.renderPackageLine(states[i], i, i === currentRow)
-        output.push(line)
+    // Render visible items
+    if (renderableItems && renderableItems.length > 0) {
+      // Use renderable items for grouped display
+      for (
+        let i = scrollOffset;
+        i < Math.min(scrollOffset + maxVisibleItems, renderableItems.length);
+        i++
+      ) {
+        const item = renderableItems[i]
+        if (item.type === 'header') {
+          output.push(this.renderSectionHeader(item.title, item.sectionType))
+        } else if (item.type === 'spacer') {
+          output.push(this.renderSpacer())
+        } else if (item.type === 'package') {
+          const line = this.renderPackageLine(
+            item.state,
+            item.originalIndex,
+            item.originalIndex === currentRow
+          )
+          output.push(line)
+        }
       }
     } else {
-      // Incremental render - return lines for cursor positioning and updates
-      output.push('  ' + chalk.bold.magenta('🚀 pnpm-upgrade-interactive'))
-      output.push('')
-      output.push(
-        '  ' +
-          chalk.bold.white('↑/↓ ') +
-          chalk.gray('Move') +
-          '  ' +
-          chalk.bold.white('←/→ ') +
-          chalk.gray('Select versions') +
-          '  ' +
-          chalk.bold.white('M ') +
-          chalk.gray('Select all minor') +
-          '  ' +
-          chalk.bold.white('L ') +
-          chalk.gray('Select all updates') +
-          '  ' +
-          chalk.bold.white('U ') +
-          chalk.gray('Unselect all')
-      )
-
-      // Show status line with item range
-      const totalItems = states.length
-      const startItem = scrollOffset + 1
-      const endItem = Math.min(scrollOffset + maxVisibleItems, totalItems)
-      const statusLine =
-        totalItems > maxVisibleItems
-          ? chalk.gray(
-              `Showing ${chalk.gray(startItem)}-${chalk.gray(endItem)} of ${chalk.gray(totalItems)} packages`
-            ) +
-            '  ' +
-            chalk.gray('Enter ') +
-            chalk.gray('Confirm') +
-            '  ' +
-            chalk.gray('Esc ') +
-            chalk.gray('Cancel')
-          : chalk.gray(`Showing all ${chalk.gray(totalItems)} packages`) +
-            '  ' +
-            chalk.gray('Enter ') +
-            chalk.gray('Confirm') +
-            '  ' +
-            chalk.gray('Esc ') +
-            chalk.gray('Cancel')
-      output.push('  ' + statusLine)
-      output.push('')
-
-      // Render only visible packages
+      // Fallback to flat rendering (legacy mode)
       for (let i = scrollOffset; i < Math.min(scrollOffset + maxVisibleItems, states.length); i++) {
         const line = this.renderPackageLine(states[i], i, i === currentRow)
         output.push(line)
