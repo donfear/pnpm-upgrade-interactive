@@ -478,19 +478,7 @@ export class UIRenderer {
       )
     }
 
-    // Footer with help text
-    lines.push(' '.repeat(padding) + chalk.gray('├' + '─'.repeat(modalWidth - 2) + '┤'))
-    const helpText = chalk.gray('Press I or ESC to close')
-    const helpPadding = modalWidth - 4 - this.stripAnsi(helpText).length
-    lines.push(
-      ' '.repeat(padding) +
-        chalk.gray('│') +
-        ' ' +
-        helpText +
-        ' '.repeat(Math.max(0, helpPadding)) +
-        chalk.gray('│')
-    )
-
+    // Footer
     lines.push(' '.repeat(padding) + chalk.gray('╰' + '─'.repeat(modalWidth - 2) + '╯'))
 
     return lines

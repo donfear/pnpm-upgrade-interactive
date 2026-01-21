@@ -281,6 +281,9 @@ export class InteractiveUI {
               stateManager.setInitialRender(true)
             }
             break
+          case 'cancel':
+            handleCancel()
+            return
         }
         if (action.type !== 'toggle_info_modal') {
           renderInterface()
@@ -316,6 +319,12 @@ export class InteractiveUI {
           // Render header
           const headerLines: string[] = []
           headerLines.push('  ' + chalk.bold.magenta('🚀 pnpm-upgrade-interactive'))
+          headerLines.push('')
+          headerLines.push(
+            '  ' +
+              chalk.bold.white('I / Esc ') +
+              chalk.gray('Exit this view')
+          )
           headerLines.push('')
           headerLines.forEach((line) => console.log(line))
 

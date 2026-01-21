@@ -92,8 +92,13 @@ export class InputHandler {
         break
 
       case 'escape':
-        // Toggle modal (close if open) or cancel if modal is not open
-        this.onAction({ type: 'toggle_info_modal' })
+        // Check if modal is open - if so, close it; otherwise cancel
+        const uiState = this.stateManager.getUIState()
+        if (uiState.showInfoModal) {
+          this.onAction({ type: 'toggle_info_modal' })
+        } else {
+          this.onAction({ type: 'cancel' })
+        }
         break
     }
   }
