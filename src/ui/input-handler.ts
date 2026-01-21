@@ -11,6 +11,7 @@ export type InputAction =
   | { type: 'bulk_select_minor' }
   | { type: 'bulk_select_latest' }
   | { type: 'bulk_unselect_all' }
+  | { type: 'toggle_info_modal' }
   | { type: 'cancel' }
   | { type: 'resize'; height: number }
 
@@ -85,10 +86,20 @@ export class InputHandler {
         this.onAction({ type: 'bulk_unselect_all' })
         break
 
+      case 'i':
+      case 'I':
+        this.onAction({ type: 'toggle_info_modal' })
+        break
+
       case 'escape':
-        this.cleanup()
-        this.onCancel()
-        return
+        // Check if modal is open - if so, close it; otherwise cancel
+        const uiState = this.stateManager.getUIState()
+        if (uiState.showInfoModal) {
+          this.onAction({ type: 'toggle_info_modal' })
+        } else {
+          this.onAction({ type: 'cancel' })
+        }
+        break
     }
   }
 

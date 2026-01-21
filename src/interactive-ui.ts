@@ -18,6 +18,7 @@ import {
   InputAction,
   VersionUtils,
 } from './ui'
+import { changelogFetcher } from './changelog-fetcher'
 
 export class InteractiveUI {
   private renderer: UIRenderer
@@ -205,27 +206,70 @@ export class InteractiveUI {
       stateManager.setRenderableItems(renderableItems)
 
       const handleAction = (action: InputAction) => {
+        const uiState = stateManager.getUIState()
+
         switch (action.type) {
           case 'navigate_up':
-            stateManager.navigateUp(states.length)
+            if (!uiState.showInfoModal) {
+              stateManager.navigateUp(states.length)
+            }
             break
           case 'navigate_down':
-            stateManager.navigateDown(states.length)
+            if (!uiState.showInfoModal) {
+              stateManager.navigateDown(states.length)
+            }
             break
           case 'select_left':
-            stateManager.updateSelection(states, 'left')
+            if (!uiState.showInfoModal) {
+              stateManager.updateSelection(states, 'left')
+            }
             break
           case 'select_right':
-            stateManager.updateSelection(states, 'right')
+            if (!uiState.showInfoModal) {
+              stateManager.updateSelection(states, 'right')
+            }
             break
           case 'bulk_select_minor':
-            stateManager.bulkSelectMinor(states)
+            if (!uiState.showInfoModal) {
+              stateManager.bulkSelectMinor(states)
+            }
             break
           case 'bulk_select_latest':
-            stateManager.bulkSelectLatest(states)
+            if (!uiState.showInfoModal) {
+              stateManager.bulkSelectLatest(states)
+            }
             break
           case 'bulk_unselect_all':
-            stateManager.bulkUnselectAll(states)
+            if (!uiState.showInfoModal) {
+              stateManager.bulkUnselectAll(states)
+            }
+            break
+          case 'toggle_info_modal':
+            if (!uiState.showInfoModal) {
+              // Opening modal - load package info asynchronously
+              stateManager.toggleInfoModal()
+              const currentState = states[uiState.currentRow]
+              stateManager.setModalLoading(true)
+              renderInterface()
+
+              // Fetch metadata asynchronously
+              changelogFetcher.fetchPackageMetadata(currentState.name).then((metadata) => {
+                if (metadata) {
+                  currentState.description = metadata.description
+                  currentState.homepage = metadata.homepage
+                  currentState.repository = metadata.releaseNotes
+                  currentState.weeklyDownloads = metadata.weeklyDownloads
+                  currentState.author = metadata.author as string | undefined
+                  currentState.license = metadata.license
+                }
+                stateManager.setModalLoading(false)
+                renderInterface()
+              })
+            } else {
+              // Closing modal
+              stateManager.toggleInfoModal()
+              renderInterface()
+            }
             break
           case 'resize':
             const heightChanged = stateManager.updateTerminalHeight(action.height)
@@ -237,15 +281,34 @@ export class InteractiveUI {
               stateManager.setInitialRender(true)
             }
             break
+          case 'cancel':
+            handleCancel()
+            return
         }
-        renderInterface()
+        if (action.type !== 'toggle_info_modal') {
+          renderInterface()
+        }
       }
 
       const handleConfirm = (selectedStates: PackageSelectionState[]) => {
+        // Clean up listeners
+        if (process.stdin.setRawMode) {
+          process.stdin.setRawMode(false)
+        }
+        process.stdin.removeAllListeners('keypress')
+        process.stdin.pause()
+        process.removeAllListeners('SIGWINCH')
         resolve(selectedStates)
       }
 
       const handleCancel = () => {
+        // Clean up listeners
+        if (process.stdin.setRawMode) {
+          process.stdin.setRawMode(false)
+        }
+        process.stdin.removeAllListeners('keypress')
+        process.stdin.pause()
+        process.removeAllListeners('SIGWINCH')
         resolve(states.map((s) => ({ ...s, selectedOption: 'none' })))
       }
 
@@ -261,24 +324,59 @@ export class InteractiveUI {
           process.stdout.write('\x1b[H')
         }
 
-        const lines = this.renderer.renderInterface(
-          states,
-          uiState.currentRow,
-          uiState.scrollOffset,
-          uiState.maxVisibleItems,
-          uiState.isInitialRender,
-          uiState.renderableItems
-        )
+        // If modal is open, render only the modal with header/footer
+        if (uiState.showInfoModal && uiState.infoModalRow >= 0 && uiState.infoModalRow < states.length) {
+          const selectedState = states[uiState.infoModalRow]
+          const terminalWidth = process.stdout.columns || 80
+          const terminalHeight = this.getTerminalHeight()
 
-        // Print all lines
-        lines.forEach((line) => console.log(line))
+          // Render header
+          const headerLines: string[] = []
+          headerLines.push('  ' + chalk.bold.magenta('🚀 pnpm-upgrade-interactive'))
+          headerLines.push('')
+          headerLines.push(
+            '  ' +
+              chalk.bold.white('I / Esc ') +
+              chalk.gray('Exit this view')
+          )
+          headerLines.push('')
+          headerLines.forEach((line) => console.log(line))
 
-        // Clear any remaining lines from previous render
-        if (!uiState.isInitialRender) {
+          if (uiState.isLoadingModalInfo) {
+            // Show loading state
+            const modalLines = this.renderer.renderPackageInfoLoading(selectedState, terminalWidth, terminalHeight)
+            modalLines.forEach((line) => console.log(line))
+          } else {
+            // Show full info
+            const modalLines = this.renderer.renderPackageInfoModal(selectedState, terminalWidth, terminalHeight)
+            modalLines.forEach((line) => console.log(line))
+          }
+
+          // Clear any remaining lines from previous render
           process.stdout.write('\x1b[J')
+          stateManager.markRendered([])
+        } else {
+          // Normal list view
+          const lines = this.renderer.renderInterface(
+            states,
+            uiState.currentRow,
+            uiState.scrollOffset,
+            uiState.maxVisibleItems,
+            uiState.isInitialRender,
+            uiState.renderableItems
+          )
+
+          // Print all lines
+          lines.forEach((line) => console.log(line))
+
+          // Clear any remaining lines from previous render
+          if (!uiState.isInitialRender) {
+            process.stdout.write('\x1b[J')
+          }
+
+          stateManager.markRendered(lines)
         }
 
-        stateManager.markRendered(lines)
         stateManager.setInitialRender(false)
       }
 

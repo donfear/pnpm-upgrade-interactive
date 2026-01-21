@@ -10,6 +10,9 @@ export interface UIState {
   isInitialRender: boolean
   renderedLines: string[]
   renderableItems: RenderableItem[]
+  showInfoModal: boolean // Whether to show package info modal
+  infoModalRow: number // Which package's info to show
+  isLoadingModalInfo: boolean // Whether we're fetching package info for the modal
 }
 
 export class StateManager {
@@ -27,6 +30,9 @@ export class StateManager {
       isInitialRender: true,
       renderedLines: [],
       renderableItems: [],
+      showInfoModal: false,
+      infoModalRow: -1,
+      isLoadingModalInfo: false,
     }
   }
 
@@ -148,7 +154,10 @@ export class StateManager {
     // Ensure scrollOffset doesn't go negative or beyond bounds
     this.uiState.scrollOffset = Math.max(
       0,
-      Math.min(this.uiState.scrollOffset, Math.max(0, totalVisualItems - this.uiState.maxVisibleItems))
+      Math.min(
+        this.uiState.scrollOffset,
+        Math.max(0, totalVisualItems - this.uiState.maxVisibleItems)
+      )
     )
   }
 
@@ -232,6 +241,31 @@ export class StateManager {
   resetForResize(): void {
     const totalItems = this.uiState.renderableItems.length || this.uiState.maxVisibleItems
     this.ensureVisible(this.uiState.currentRow, totalItems)
+    this.uiState.isInitialRender = true
+  }
+
+  toggleInfoModal(): void {
+    if (this.uiState.showInfoModal) {
+      // Close the modal
+      this.uiState.showInfoModal = false
+      this.uiState.infoModalRow = -1
+    } else {
+      // Open the modal for the current package
+      this.uiState.showInfoModal = true
+      this.uiState.infoModalRow = this.uiState.currentRow
+    }
+    this.uiState.isInitialRender = true
+  }
+
+  closeInfoModal(): void {
+    this.uiState.showInfoModal = false
+    this.uiState.infoModalRow = -1
+    this.uiState.isLoadingModalInfo = false
+    this.uiState.isInitialRender = true
+  }
+
+  setModalLoading(isLoading: boolean): void {
+    this.uiState.isLoadingModalInfo = isLoading
     this.uiState.isInitialRender = true
   }
 }

@@ -222,53 +222,55 @@ export async function getAllPackageData(
   const total = packageNames.length
   let completedCount = 0
 
-  // Create an array of promises to fetch data for each package
-  const fetchPromises = packageNames.map(async (packageName) => {
-    try {
-      // Get all versions for the package
-      const command = `pnpm view ${packageName} versions --json | jq '[.[] | select(test("^[0-9]+\\\\.[0-9]+\\\\.[0-9]+$"))]'`
-      const result = await executeCommandAsync(command)
-      const allVersions = JSON.parse(result) as string[]
+  // Process in parallel batches of 10 to optimize speed vs resource usage
+  const batchSize = 500
+  const batches = []
 
-      // Sort versions to find the latest
-      const sortedVersions = allVersions.sort(semver.rcompare)
-      const latestVersion = sortedVersions.length > 0 ? sortedVersions[0] : 'unknown'
+  for (let i = 0; i < packageNames.length; i += batchSize) {
+    batches.push(packageNames.slice(i, i + batchSize))
+  }
 
-      return {
-        packageName,
-        data: {
-          latestVersion,
-          allVersions,
-        },
+  for (const batch of batches) {
+    const fetchPromises = batch.map(async (packageName) => {
+      try {
+        // Get all versions for the package
+        const command = `pnpm view ${packageName} versions --json | jq '[.[] | select(test("^[0-9]+\\\\.[0-9]+\\\\.[0-9]+$"))]'`
+        const result = await executeCommandAsync(command)
+        const allVersions = JSON.parse(result) as string[]
+
+        // Sort versions to find the latest
+        const sortedVersions = allVersions.sort(semver.rcompare)
+        const latestVersion = sortedVersions.length > 0 ? sortedVersions[0] : 'unknown'
+
+        return {
+          packageName,
+          data: {
+            latestVersion,
+            allVersions,
+          },
+        }
+      } catch (error) {
+        // Fallback for failed packages
+        return {
+          packageName,
+          data: { latestVersion: 'unknown', allVersions: [] },
+        }
       }
-    } catch (error) {
-      // Fallback for failed packages
-      return {
-        packageName,
-        data: { latestVersion: 'unknown', allVersions: [] },
-      }
+    })
+
+    // Process batch and update progress
+    const results = await Promise.all(fetchPromises)
+
+    for (const result of results) {
+      packageData.set(result.packageName, result.data)
+      completedCount++
+      const percentage = Math.round((completedCount / total) * 100)
+      showPackageProgress(`🔍 Analyzing packages... (${completedCount}/${total} - ${percentage}%)`)
     }
-  })
-
-  // Wrap promises to track completion progress
-  const wrappedPromises = fetchPromises.map(async (promise, index) => {
-    const result = await promise
-    completedCount++
-    const percentage = Math.round((completedCount / total) * 100)
-    showPackageProgress(`🔍 Analyzing packages... (${completedCount}/${total} - ${percentage}%)`)
-    return result
-  })
-
-  // Wait for all promises to settle
-  const results = await Promise.all(wrappedPromises)
+  }
 
   // Clear the progress line
   process.stdout.write('\r' + ' '.repeat(80) + '\r')
-
-  // Process results and build the map
-  for (const result of results) {
-    packageData.set(result.packageName, result.data)
-  }
 
   return packageData
 }
@@ -309,7 +311,6 @@ export function findClosestMinorVersion(
   allVersions: string[]
 ): string | null {
   try {
-    // Get the coerced installed version for comparison
     const coercedInstalled = semver.coerce(installedVersion)
     if (!coercedInstalled) {
       return null
@@ -317,52 +318,42 @@ export function findClosestMinorVersion(
 
     const installedMajor = semver.major(coercedInstalled)
     const installedMinor = semver.minor(coercedInstalled)
+    let bestMinorVersion: string | null = null
+    let bestMinorValue = -1
 
-    // First, try to find versions with same major but higher minor (minor updates)
-    const sameMajorVersions = allVersions.filter((version) => {
+    // Single pass to find best minor version in same major
+    for (const version of allVersions) {
       try {
         const major = semver.major(version)
         const minor = semver.minor(version)
-        return major === installedMajor && minor > installedMinor
+        if (major === installedMajor && minor > installedMinor && minor > bestMinorValue) {
+          bestMinorValue = minor
+          bestMinorVersion = version
+        }
       } catch {
-        return false
+        // Skip invalid versions
       }
-    })
-
-    if (sameMajorVersions.length > 0) {
-      // Return the highest minor version
-      return sameMajorVersions.sort(semver.rcompare)[0]
     }
 
-    // If no minor update exists, fall back to patch updates
-    // Find the highest version that satisfies the current range specifier
-    const satisfyingVersions = allVersions.filter((version) => {
+    if (bestMinorVersion) {
+      return bestMinorVersion
+    }
+
+    // Fallback: find highest patch that satisfies current range
+    let bestVersion: string | null = null
+    for (const version of allVersions) {
       try {
-        return semver.satisfies(version, installedVersion)
+        if (semver.satisfies(version, installedVersion) && semver.gt(version, coercedInstalled)) {
+          if (!bestVersion || semver.gt(version, bestVersion)) {
+            bestVersion = version
+          }
+        }
       } catch {
-        return false
+        // Skip invalid versions
       }
-    })
-
-    if (satisfyingVersions.length === 0) {
-      return null
     }
 
-    // Filter to only versions that are greater than the installed version
-    const newerVersions = satisfyingVersions.filter((version) => {
-      try {
-        return semver.gt(version, coercedInstalled)
-      } catch {
-        return false
-      }
-    })
-
-    if (newerVersions.length === 0) {
-      return null
-    }
-
-    // Return the highest version that satisfies the range (patch update)
-    return newerVersions.sort(semver.rcompare)[0]
+    return bestVersion
   } catch {
     return null
   }

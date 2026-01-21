@@ -55,12 +55,16 @@ export class PackageDetector {
       includeOptionalDeps: this.includeOptionalDeps,
     })
 
-    // Filter out workspace-linked dependencies (like "workspace:*", "^workspace:*", etc.)
-    const allDeps = allDepsRaw.filter((dep) => !this.isWorkspaceReference(dep.version))
-
-    // Step 3: Get unique package names for fetching version data
+    // Step 3: Get unique package names while filtering out workspace references
     this.showProgress('📦 Getting unique package names...')
-    const uniquePackageNames = new Set(allDeps.map((dep) => dep.name))
+    const uniquePackageNames = new Set<string>()
+    const allDeps: typeof allDepsRaw = []
+    for (const dep of allDepsRaw) {
+      if (!this.isWorkspaceReference(dep.version)) {
+        allDeps.push(dep)
+        uniquePackageNames.add(dep.name)
+      }
+    }
     const packageNames = Array.from(uniquePackageNames)
 
     // Step 4: Fetch all package data in one call per package
