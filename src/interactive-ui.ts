@@ -40,12 +40,13 @@ export class InteractiveUI {
       return []
     }
 
-    // Filter packages based on options
+    // Filter packages based on options and determine label
     // Default behavior (no flags): show dependencies + devDependencies
     // With -p flag: show ONLY peerDependencies
     // With -o flag: show ONLY optionalDependencies
     // With both -p -o flags: show peerDependencies + optionalDependencies
     let filteredPackages = outdatedPackages
+    let dependencyTypeLabel = ''
 
     if (options?.includePeerDeps || options?.includeOptionalDeps) {
       // If any flag is provided, filter to show only those types
@@ -54,11 +55,18 @@ export class InteractiveUI {
         if (options.includeOptionalDeps && pkg.type === 'optionalDependencies') return true
         return false
       })
+
+      // Build label
+      const types: string[] = []
+      if (options.includePeerDeps) types.push('Peer Dependencies')
+      if (options.includeOptionalDeps) types.push('Optional Dependencies')
+      dependencyTypeLabel = types.join(' & ')
     } else {
       // Default: show only dependencies and devDependencies
       filteredPackages = outdatedPackages.filter(
         (pkg) => pkg.type === 'dependencies' || pkg.type === 'devDependencies'
       )
+      dependencyTypeLabel = 'Dependencies & Dev Dependencies'
     }
 
     if (filteredPackages.length === 0) {
@@ -135,7 +143,7 @@ export class InteractiveUI {
     })
 
     // Use custom interactive table selector (simplified - no grouping)
-    const selectedStates = await this.interactiveTableSelector(selectionStates)
+    const selectedStates = await this.interactiveTableSelector(selectionStates, dependencyTypeLabel)
 
     // Convert to PackageUpgradeChoice[] - create one choice per package.json path
     const choices: PackageUpgradeChoice[] = []
@@ -174,7 +182,8 @@ export class InteractiveUI {
   }
 
   private async interactiveTableSelector(
-    selectionStates: PackageSelectionState[]
+    selectionStates: PackageSelectionState[],
+    dependencyTypeLabel: string
   ): Promise<PackageSelectionState[]> {
     return new Promise((resolve) => {
       const states = [...selectionStates]
@@ -342,7 +351,8 @@ export class InteractiveUI {
             uiState.scrollOffset,
             uiState.maxVisibleItems,
             uiState.isInitialRender,
-            [] // No renderable items - use flat rendering
+            [], // No renderable items - use flat rendering
+            dependencyTypeLabel // Show which dependency type we're upgrading
           )
 
           // Print all lines

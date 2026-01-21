@@ -143,13 +143,20 @@ export class UIRenderer {
     scrollOffset: number,
     maxVisibleItems: number,
     isInitialRender: boolean,
-    renderableItems?: RenderableItem[]
+    renderableItems?: RenderableItem[],
+    dependencyTypeLabel?: string
   ): string[] {
     const output: string[] = []
 
     // Header section (same for initial and incremental render)
     output.push('  ' + chalk.bold.magenta('🚀 pnpm-upgrade-interactive'))
     output.push('')
+
+    // Show dependency type if provided
+    if (dependencyTypeLabel) {
+      output.push('  ' + chalk.bold.cyan(dependencyTypeLabel))
+      output.push('')
+    }
     output.push(
       '  ' +
         chalk.bold.white('↑/↓ ') +
