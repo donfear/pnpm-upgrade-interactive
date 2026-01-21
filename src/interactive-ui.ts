@@ -2,7 +2,13 @@ import inquirer from 'inquirer'
 import chalk from 'chalk'
 import * as semver from 'semver'
 const keypress = require('keypress')
-import { PackageInfo, PackageUpgradeChoice, PackageSelectionState } from './types'
+import {
+  PackageInfo,
+  PackageUpgradeChoice,
+  PackageSelectionState,
+  GroupedPackages,
+  RenderableItem,
+} from './types'
 import { Key } from 'node:readline'
 import {
   StateManager,
@@ -40,6 +46,7 @@ export class InteractiveUI {
       {
         pkg: PackageInfo
         packageJsonPaths: Set<string>
+        type: PackageInfo['type']
       }
     >()
 
@@ -49,6 +56,7 @@ export class InteractiveUI {
         uniquePackages.set(key, {
           pkg,
           packageJsonPaths: new Set([pkg.packageJsonPath]),
+          type: pkg.type,
         })
       } else {
         uniquePackages.get(key)!.packageJsonPaths.add(pkg.packageJsonPath)
@@ -57,9 +65,10 @@ export class InteractiveUI {
 
     // Convert to array and sort alphabetically by name (@scoped packages first, then unscoped)
     const deduplicatedPackages = Array.from(uniquePackages.values()).map(
-      ({ pkg, packageJsonPaths }) => ({
+      ({ pkg, packageJsonPaths, type }) => ({
         ...pkg,
         packageJsonPaths: Array.from(packageJsonPaths),
+        type,
       })
     )
 
@@ -96,6 +105,7 @@ export class InteractiveUI {
         selectedOption: previousSelection,
         hasRangeUpdate: pkg.hasRangeUpdate,
         hasMajorUpdate: pkg.hasMajorUpdate,
+        type: pkg.type,
       }
     })
 
@@ -130,6 +140,50 @@ export class InteractiveUI {
     return choices
   }
 
+  private groupPackagesByType(states: PackageSelectionState[]): GroupedPackages {
+    return {
+      main: states.filter((s) => s.type === 'dependencies' || s.type === 'devDependencies'),
+      peer: states.filter((s) => s.type === 'peerDependencies'),
+      optional: states.filter((s) => s.type === 'optionalDependencies'),
+    }
+  }
+
+  private buildRenderableList(
+    groupedPackages: GroupedPackages,
+    states: PackageSelectionState[]
+  ): RenderableItem[] {
+    const items: RenderableItem[] = []
+    let isFirstSection = true
+
+    const addSection = (
+      packages: PackageSelectionState[],
+      title: string,
+      sectionType: 'main' | 'peer' | 'optional'
+    ) => {
+      if (packages.length === 0) return
+
+      if (!isFirstSection) {
+        items.push({ type: 'spacer' })
+      }
+      isFirstSection = false
+
+      items.push({ type: 'header', title, sectionType })
+
+      for (const pkg of packages) {
+        const originalIndex = states.findIndex(
+          (s) => s.name === pkg.name && s.currentVersionSpecifier === pkg.currentVersionSpecifier
+        )
+        items.push({ type: 'package', state: pkg, originalIndex })
+      }
+    }
+
+    addSection(groupedPackages.main, 'Dependencies & Dev Dependencies', 'main')
+    addSection(groupedPackages.peer, 'Peer Dependencies', 'peer')
+    addSection(groupedPackages.optional, 'Optional Dependencies', 'optional')
+
+    return items
+  }
+
   private getTerminalHeight(): number {
     // Check if stdout is a TTY and has rows property
     if (process.stdout.isTTY && typeof process.stdout.rows === 'number' && process.stdout.rows > 0) {
@@ -144,6 +198,11 @@ export class InteractiveUI {
     return new Promise((resolve) => {
       const states = [...selectionStates]
       const stateManager = new StateManager(0, this.getTerminalHeight())
+
+      // Group packages by type and build renderable list
+      const groupedPackages = this.groupPackagesByType(states)
+      const renderableItems = this.buildRenderableList(groupedPackages, states)
+      stateManager.setRenderableItems(renderableItems)
 
       const handleAction = (action: InputAction) => {
         switch (action.type) {
@@ -207,7 +266,8 @@ export class InteractiveUI {
           uiState.currentRow,
           uiState.scrollOffset,
           uiState.maxVisibleItems,
-          uiState.isInitialRender
+          uiState.isInitialRender,
+          uiState.renderableItems
         )
 
         // Print all lines

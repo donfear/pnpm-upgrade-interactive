@@ -1,14 +1,15 @@
-import { PackageSelectionState } from '../types'
+import { PackageSelectionState, RenderableItem } from '../types'
 
 export interface UIState {
-  currentRow: number
+  currentRow: number // Index into states array (package index)
   previousRow: number
-  scrollOffset: number
+  scrollOffset: number // Scroll offset in visual rows (includes headers/spacers)
   previousScrollOffset: number
   maxVisibleItems: number
   terminalHeight: number
   isInitialRender: boolean
   renderedLines: string[]
+  renderableItems: RenderableItem[]
 }
 
 export class StateManager {
@@ -25,11 +26,70 @@ export class StateManager {
       terminalHeight,
       isInitialRender: true,
       renderedLines: [],
+      renderableItems: [],
     }
   }
 
   getUIState(): UIState {
     return { ...this.uiState }
+  }
+
+  setRenderableItems(items: RenderableItem[]): void {
+    this.uiState.renderableItems = items
+  }
+
+  // Convert package index to visual row index in renderable items
+  packageIndexToVisualIndex(packageIndex: number): number {
+    for (let i = 0; i < this.uiState.renderableItems.length; i++) {
+      const item = this.uiState.renderableItems[i]
+      if (item.type === 'package' && item.originalIndex === packageIndex) {
+        return i
+      }
+    }
+    return 0
+  }
+
+  // Find the next navigable package index in the given direction
+  private findNextPackageIndex(
+    currentPackageIndex: number,
+    direction: 'up' | 'down',
+    totalPackages: number
+  ): number {
+    if (this.uiState.renderableItems.length === 0) {
+      // Fallback to simple navigation if no renderable items
+      if (direction === 'up') {
+        return currentPackageIndex <= 0 ? totalPackages - 1 : currentPackageIndex - 1
+      } else {
+        return currentPackageIndex >= totalPackages - 1 ? 0 : currentPackageIndex + 1
+      }
+    }
+
+    // Find current visual index
+    const currentVisualIndex = this.packageIndexToVisualIndex(currentPackageIndex)
+
+    // Get all package items with their visual indices
+    const packageItems: { visualIndex: number; packageIndex: number }[] = []
+    for (let i = 0; i < this.uiState.renderableItems.length; i++) {
+      const item = this.uiState.renderableItems[i]
+      if (item.type === 'package') {
+        packageItems.push({ visualIndex: i, packageIndex: item.originalIndex })
+      }
+    }
+
+    if (packageItems.length === 0) return currentPackageIndex
+
+    // Find current position in packageItems
+    const currentPos = packageItems.findIndex((p) => p.packageIndex === currentPackageIndex)
+    if (currentPos === -1) return packageItems[0].packageIndex
+
+    // Navigate with wrap-around
+    if (direction === 'up') {
+      const newPos = currentPos <= 0 ? packageItems.length - 1 : currentPos - 1
+      return packageItems[newPos].packageIndex
+    } else {
+      const newPos = currentPos >= packageItems.length - 1 ? 0 : currentPos + 1
+      return packageItems[newPos].packageIndex
+    }
   }
 
   updateTerminalHeight(newHeight: number): boolean {
@@ -48,32 +108,47 @@ export class StateManager {
 
   navigateUp(totalItems: number): void {
     this.uiState.previousRow = this.uiState.currentRow
-    this.uiState.currentRow = this.uiState.currentRow - 1
-    if (this.uiState.currentRow < 0) {
-      this.uiState.currentRow = totalItems - 1 // Wrap around to last item
-    }
+    this.uiState.currentRow = this.findNextPackageIndex(this.uiState.currentRow, 'up', totalItems)
     this.ensureVisible(this.uiState.currentRow, totalItems)
   }
 
   navigateDown(totalItems: number): void {
     this.uiState.previousRow = this.uiState.currentRow
-    this.uiState.currentRow = this.uiState.currentRow + 1
-    if (this.uiState.currentRow >= totalItems) {
-      this.uiState.currentRow = 0 // Wrap around to first item
-    }
+    this.uiState.currentRow = this.findNextPackageIndex(this.uiState.currentRow, 'down', totalItems)
     this.ensureVisible(this.uiState.currentRow, totalItems)
   }
 
-  private ensureVisible(rowIndex: number, totalItems: number): void {
-    if (rowIndex < this.uiState.scrollOffset) {
-      this.uiState.scrollOffset = rowIndex
-    } else if (rowIndex >= this.uiState.scrollOffset + this.uiState.maxVisibleItems) {
-      this.uiState.scrollOffset = rowIndex - this.uiState.maxVisibleItems + 1
+  private ensureVisible(packageIndex: number, totalPackages: number): void {
+    // Convert package index to visual index for scrolling
+    const visualIndex = this.packageIndexToVisualIndex(packageIndex)
+    const totalVisualItems = this.uiState.renderableItems.length || totalPackages
+
+    // Try to show section header if the current item is just below a header
+    let targetVisualIndex = visualIndex
+    if (visualIndex > 0) {
+      const prevItem = this.uiState.renderableItems[visualIndex - 1]
+      if (prevItem?.type === 'header') {
+        targetVisualIndex = visualIndex - 1
+      } else if (visualIndex > 1) {
+        // Also check for spacer + header combo
+        const prevPrevItem = this.uiState.renderableItems[visualIndex - 2]
+        if (prevItem?.type === 'spacer' || prevPrevItem?.type === 'header') {
+          // Show spacer and header if possible
+          targetVisualIndex = Math.max(0, visualIndex - 2)
+        }
+      }
     }
+
+    if (targetVisualIndex < this.uiState.scrollOffset) {
+      this.uiState.scrollOffset = targetVisualIndex
+    } else if (visualIndex >= this.uiState.scrollOffset + this.uiState.maxVisibleItems) {
+      this.uiState.scrollOffset = visualIndex - this.uiState.maxVisibleItems + 1
+    }
+
     // Ensure scrollOffset doesn't go negative or beyond bounds
     this.uiState.scrollOffset = Math.max(
       0,
-      Math.min(this.uiState.scrollOffset, Math.max(0, totalItems - this.uiState.maxVisibleItems))
+      Math.min(this.uiState.scrollOffset, Math.max(0, totalVisualItems - this.uiState.maxVisibleItems))
     )
   }
 
@@ -155,7 +230,8 @@ export class StateManager {
   }
 
   resetForResize(): void {
-    this.ensureVisible(this.uiState.currentRow, this.uiState.maxVisibleItems)
+    const totalItems = this.uiState.renderableItems.length || this.uiState.maxVisibleItems
+    this.ensureVisible(this.uiState.currentRow, totalItems)
     this.uiState.isInitialRender = true
   }
 }

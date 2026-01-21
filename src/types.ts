@@ -29,7 +29,19 @@ export interface PackageSelectionState {
   selectedOption: 'none' | 'range' | 'latest'
   hasRangeUpdate: boolean
   hasMajorUpdate: boolean
+  type: 'dependencies' | 'devDependencies' | 'optionalDependencies' | 'peerDependencies'
 }
+
+export interface GroupedPackages {
+  main: PackageSelectionState[] // dependencies + devDependencies
+  peer: PackageSelectionState[] // peerDependencies
+  optional: PackageSelectionState[] // optionalDependencies
+}
+
+export type RenderableItem =
+  | { type: 'header'; title: string; sectionType: 'main' | 'peer' | 'optional' }
+  | { type: 'spacer' }
+  | { type: 'package'; state: PackageSelectionState; originalIndex: number }
 
 export interface UpgradeOptions {
   packages: string[]
@@ -42,7 +54,6 @@ export interface PnpmUpgradeOptions {
   excludePatterns?: string[]
   includePeerDeps?: boolean
   includeOptionalDeps?: boolean
-  dryRun?: boolean // If true, show what would be executed without actually running pnpm install
 }
 
 export interface PackageJson {
