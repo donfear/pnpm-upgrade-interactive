@@ -2,20 +2,24 @@
 
 import { Command } from 'commander'
 import chalk from 'chalk'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { PnpmUpgradeInteractive } from './index'
+
+const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'))
 
 const program = new Command()
 
 program
-  .name('pnpm-upgrade-interactive')
+  .name('pnpm-aupgrade-interactive')
   .description('Interactive upgrade tool for pnpm packages')
-  .version('1.0.0')
+  .version(packageJson.version)
   .option('-d, --dir <directory>', 'specify directory to run in', process.cwd())
   .option('-e, --exclude <patterns>', 'exclude paths matching regex patterns (comma-separated)', '')
   .option('-p, --peer', 'include peer dependencies in upgrade process')
   .option('-o, --optional', 'include optional dependencies in upgrade process')
   .action(async (options) => {
-    console.log(chalk.bold.blue('🚀 pnpm-upgrade-interactive\n'))
+    console.log(chalk.bold.blue(`🚀 pnpm-upgrade-interactive v${packageJson.version}\n`))
 
     const excludePatterns = options.exclude
       ? options.exclude
