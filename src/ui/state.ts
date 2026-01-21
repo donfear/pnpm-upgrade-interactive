@@ -136,19 +136,30 @@ export class StateManager {
       if (prevItem?.type === 'header') {
         targetVisualIndex = visualIndex - 1
       } else if (visualIndex > 1) {
-        // Also check for spacer + header combo
+        // Also check for spacer + header combo (for first package in non-first section)
         const prevPrevItem = this.uiState.renderableItems[visualIndex - 2]
-        if (prevItem?.type === 'spacer' || prevPrevItem?.type === 'header') {
+        if (prevItem?.type === 'spacer' && prevPrevItem?.type === 'header') {
           // Show spacer and header if possible
           targetVisualIndex = Math.max(0, visualIndex - 2)
         }
       }
     }
 
+    // Scrolling up: show from targetVisualIndex (includes headers if applicable)
     if (targetVisualIndex < this.uiState.scrollOffset) {
       this.uiState.scrollOffset = targetVisualIndex
-    } else if (visualIndex >= this.uiState.scrollOffset + this.uiState.maxVisibleItems) {
-      this.uiState.scrollOffset = visualIndex - this.uiState.maxVisibleItems + 1
+    }
+    // Scrolling down: ensure the package is visible, but prefer showing context if possible
+    else if (visualIndex >= this.uiState.scrollOffset + this.uiState.maxVisibleItems) {
+      // Calculate how many items we need to show from targetVisualIndex to visualIndex
+      const rangeSize = visualIndex - targetVisualIndex + 1
+      if (rangeSize <= this.uiState.maxVisibleItems) {
+        // We can fit the context (header/spacer) and the package, so show from targetVisualIndex
+        this.uiState.scrollOffset = targetVisualIndex
+      } else {
+        // Not enough room for context, position package at bottom of viewport
+        this.uiState.scrollOffset = visualIndex - this.uiState.maxVisibleItems + 1
+      }
     }
 
     // Ensure scrollOffset doesn't go negative or beyond bounds

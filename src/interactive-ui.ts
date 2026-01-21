@@ -6,8 +6,6 @@ import {
   PackageInfo,
   PackageUpgradeChoice,
   PackageSelectionState,
-  GroupedPackages,
-  RenderableItem,
 } from './types'
 import { Key } from 'node:readline'
 import {
@@ -33,11 +31,37 @@ export class InteractiveUI {
 
   public async selectPackagesToUpgrade(
     packages: PackageInfo[],
-    previousSelections?: Map<string, 'none' | 'range' | 'latest'>
+    previousSelections?: Map<string, 'none' | 'range' | 'latest'>,
+    options?: { includePeerDeps?: boolean; includeOptionalDeps?: boolean }
   ): Promise<PackageUpgradeChoice[]> {
     const outdatedPackages = packages.filter((p) => p.isOutdated)
 
     if (outdatedPackages.length === 0) {
+      return []
+    }
+
+    // Filter packages based on options
+    // Default behavior (no flags): show dependencies + devDependencies
+    // With -p flag: show ONLY peerDependencies
+    // With -o flag: show ONLY optionalDependencies
+    // With both -p -o flags: show peerDependencies + optionalDependencies
+    let filteredPackages = outdatedPackages
+
+    if (options?.includePeerDeps || options?.includeOptionalDeps) {
+      // If any flag is provided, filter to show only those types
+      filteredPackages = outdatedPackages.filter((pkg) => {
+        if (options.includePeerDeps && pkg.type === 'peerDependencies') return true
+        if (options.includeOptionalDeps && pkg.type === 'optionalDependencies') return true
+        return false
+      })
+    } else {
+      // Default: show only dependencies and devDependencies
+      filteredPackages = outdatedPackages.filter(
+        (pkg) => pkg.type === 'dependencies' || pkg.type === 'devDependencies'
+      )
+    }
+
+    if (filteredPackages.length === 0) {
       return []
     }
 
@@ -51,7 +75,7 @@ export class InteractiveUI {
       }
     >()
 
-    for (const pkg of outdatedPackages) {
+    for (const pkg of filteredPackages) {
       const key = `${pkg.name}@${pkg.currentVersion}`
       if (!uniquePackages.has(key)) {
         uniquePackages.set(key, {
@@ -110,7 +134,7 @@ export class InteractiveUI {
       }
     })
 
-    // Use custom interactive table selector
+    // Use custom interactive table selector (simplified - no grouping)
     const selectedStates = await this.interactiveTableSelector(selectionStates)
 
     // Convert to PackageUpgradeChoice[] - create one choice per package.json path
@@ -141,50 +165,6 @@ export class InteractiveUI {
     return choices
   }
 
-  private groupPackagesByType(states: PackageSelectionState[]): GroupedPackages {
-    return {
-      main: states.filter((s) => s.type === 'dependencies' || s.type === 'devDependencies'),
-      peer: states.filter((s) => s.type === 'peerDependencies'),
-      optional: states.filter((s) => s.type === 'optionalDependencies'),
-    }
-  }
-
-  private buildRenderableList(
-    groupedPackages: GroupedPackages,
-    states: PackageSelectionState[]
-  ): RenderableItem[] {
-    const items: RenderableItem[] = []
-    let isFirstSection = true
-
-    const addSection = (
-      packages: PackageSelectionState[],
-      title: string,
-      sectionType: 'main' | 'peer' | 'optional'
-    ) => {
-      if (packages.length === 0) return
-
-      if (!isFirstSection) {
-        items.push({ type: 'spacer' })
-      }
-      isFirstSection = false
-
-      items.push({ type: 'header', title, sectionType })
-
-      for (const pkg of packages) {
-        const originalIndex = states.findIndex(
-          (s) => s.name === pkg.name && s.currentVersionSpecifier === pkg.currentVersionSpecifier
-        )
-        items.push({ type: 'package', state: pkg, originalIndex })
-      }
-    }
-
-    addSection(groupedPackages.main, 'Dependencies & Dev Dependencies', 'main')
-    addSection(groupedPackages.peer, 'Peer Dependencies', 'peer')
-    addSection(groupedPackages.optional, 'Optional Dependencies', 'optional')
-
-    return items
-  }
-
   private getTerminalHeight(): number {
     // Check if stdout is a TTY and has rows property
     if (process.stdout.isTTY && typeof process.stdout.rows === 'number' && process.stdout.rows > 0) {
@@ -200,10 +180,9 @@ export class InteractiveUI {
       const states = [...selectionStates]
       const stateManager = new StateManager(0, this.getTerminalHeight())
 
-      // Group packages by type and build renderable list
-      const groupedPackages = this.groupPackagesByType(states)
-      const renderableItems = this.buildRenderableList(groupedPackages, states)
-      stateManager.setRenderableItems(renderableItems)
+      // No grouping needed - packages are already filtered by type
+      // This simplifies scrolling and avoids rendering issues
+      stateManager.setRenderableItems([])
 
       const handleAction = (action: InputAction) => {
         const uiState = stateManager.getUIState()
@@ -356,14 +335,14 @@ export class InteractiveUI {
           process.stdout.write('\x1b[J')
           stateManager.markRendered([])
         } else {
-          // Normal list view
+          // Normal list view (flat rendering - no grouping)
           const lines = this.renderer.renderInterface(
             states,
             uiState.currentRow,
             uiState.scrollOffset,
             uiState.maxVisibleItems,
             uiState.isInitialRender,
-            uiState.renderableItems
+            [] // No renderable items - use flat rendering
           )
 
           // Print all lines

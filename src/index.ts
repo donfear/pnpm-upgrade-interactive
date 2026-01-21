@@ -9,11 +9,13 @@ export class PnpmUpgradeInteractive {
   private detector: PackageDetector
   private ui: InteractiveUI
   private upgrader: PackageUpgrader
+  private options?: PnpmUpgradeOptions
 
   constructor(options?: PnpmUpgradeOptions) {
     this.detector = new PackageDetector(options)
     this.ui = new InteractiveUI()
     this.upgrader = new PackageUpgrader()
+    this.options = options
   }
 
   public async run(): Promise<void> {
@@ -38,8 +40,11 @@ export class PnpmUpgradeInteractive {
       let previousSelections: Map<string, 'none' | 'range' | 'latest'> | undefined
 
       while (true) {
-        // Interactive selection
-        selectedChoices = await this.ui.selectPackagesToUpgrade(packages, previousSelections)
+        // Interactive selection (pass options for filtering)
+        selectedChoices = await this.ui.selectPackagesToUpgrade(packages, previousSelections, {
+          includePeerDeps: this.options?.includePeerDeps,
+          includeOptionalDeps: this.options?.includeOptionalDeps,
+        })
 
         if (selectedChoices.length === 0) {
           console.log(chalk.yellow('No packages selected. Exiting...'))
