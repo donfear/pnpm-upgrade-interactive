@@ -8,6 +8,12 @@ export interface PackageInfo {
   isOutdated: boolean
   hasRangeUpdate: boolean // If range version is different from current
   hasMajorUpdate: boolean // If latest version is a major update
+  description?: string // Package description from npm registry
+  homepage?: string // Package homepage URL
+  repository?: string // GitHub/repository URL for releases
+  weeklyDownloads?: number // Weekly download count from npm
+  author?: string // Package author
+  license?: string // Package license
 }
 
 export interface PackageUpgradeChoice {
@@ -30,6 +36,12 @@ export interface PackageSelectionState {
   hasRangeUpdate: boolean
   hasMajorUpdate: boolean
   type: 'dependencies' | 'devDependencies' | 'optionalDependencies' | 'peerDependencies'
+  description?: string // Package description from npm registry
+  homepage?: string // Package homepage URL
+  repository?: string // GitHub/repository URL for releases
+  weeklyDownloads?: number // Weekly download count from npm
+  author?: string // Package author
+  license?: string // Package license
 }
 
 export interface GroupedPackages {

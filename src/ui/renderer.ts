@@ -3,6 +3,13 @@ import { PackageSelectionState, RenderableItem } from '../types'
 import { VersionUtils } from './utils'
 
 export class UIRenderer {
+  /**
+   * Remove ANSI color codes from a string for length calculation
+   */
+  private stripAnsi(str: string): string {
+    return str.replace(/\u001b\[[0-9;]*m/g, '')
+  }
+
   renderPackageLine(state: PackageSelectionState, index: number, isCurrentRow: boolean): string {
     const prefix = isCurrentRow ? chalk.green('❯ ') : '  '
 
@@ -151,12 +158,17 @@ export class UIRenderer {
         chalk.bold.white('←/→ ') +
         chalk.gray('Select versions') +
         '  ' +
+        chalk.bold.white('I ') +
+        chalk.gray('Info') +
+        '  ' +
         chalk.bold.white('M ') +
         chalk.gray('Select all minor') +
         '  ' +
         chalk.bold.white('L ') +
-        chalk.gray('Select all updates') +
-        '  ' +
+        chalk.gray('Select all')
+    )
+    output.push(
+      '  ' +
         chalk.bold.white('U ') +
         chalk.gray('Unselect all')
     )
@@ -262,5 +274,225 @@ export class UIRenderer {
     output += chalk.gray('Press Enter/Y to proceed, N to go back to selection, ESC to cancel\n')
 
     return output
+  }
+
+  /**
+   * Format a number for display (e.g., 1000000 -> "1M", 1000 -> "1K")
+   */
+  private formatNumber(num: number | undefined): string {
+    if (!num) return 'N/A'
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
+    return num.toString()
+  }
+
+  /**
+   * Wrap text to fit within max width
+   */
+  private wrapText(text: string, maxWidth: number): string[] {
+    if (text.length <= maxWidth) {
+      return [text]
+    }
+    const lines: string[] = []
+    let current = ''
+    const words = text.split(' ')
+
+    for (const word of words) {
+      if ((current + ' ' + word).length > maxWidth) {
+        if (current) lines.push(current)
+        current = word
+      } else {
+        current = current ? current + ' ' + word : word
+      }
+    }
+    if (current) lines.push(current)
+    return lines
+  }
+
+  /**
+   * Render a loading state for the info modal
+   */
+  renderPackageInfoLoading(state: PackageSelectionState, terminalWidth: number = 80, terminalHeight: number = 24): string[] {
+    const modalWidth = Math.min(terminalWidth - 6, 120)
+    const padding = Math.floor((terminalWidth - modalWidth) / 2)
+    const lines: string[] = []
+
+    // Top padding to center vertically
+    const topPadding = Math.max(1, Math.floor((terminalHeight - 10) / 2))
+    for (let i = 0; i < topPadding; i++) {
+      lines.push('')
+    }
+
+    // Modal border
+    lines.push(' '.repeat(padding) + chalk.gray('╭' + '─'.repeat(modalWidth - 2) + '╮'))
+
+    // Loading message
+    const loadingMsg = '⏳ Loading package info...'
+    const msgPadding = modalWidth - 4 - this.stripAnsi(loadingMsg).length
+    lines.push(
+      ' '.repeat(padding) +
+        chalk.gray('│') +
+        ' ' +
+        chalk.cyan(loadingMsg) +
+        ' '.repeat(Math.max(0, msgPadding)) +
+        chalk.gray('│')
+    )
+
+    // Package name
+    const nameMsg = `${state.name}`
+    const namePadding = modalWidth - 4 - nameMsg.length
+    lines.push(
+      ' '.repeat(padding) +
+        chalk.gray('│') +
+        ' ' +
+        chalk.white(nameMsg) +
+        ' '.repeat(Math.max(0, namePadding)) +
+        chalk.gray('│')
+    )
+
+    lines.push(' '.repeat(padding) + chalk.gray('╰' + '─'.repeat(modalWidth - 2) + '╯'))
+
+    return lines
+  }
+
+  /**
+   * Render a full-screen modal overlay showing package information
+   * Similar to Turbo's help menu - centered with disabled background
+   */
+  renderPackageInfoModal(state: PackageSelectionState, terminalWidth: number = 80, terminalHeight: number = 24): string[] {
+    const modalWidth = Math.min(terminalWidth - 6, 120) // Leave margins
+    const padding = Math.floor((terminalWidth - modalWidth) / 2)
+    const lines: string[] = []
+
+    // Top padding to center vertically
+    const topPadding = Math.max(1, Math.floor((terminalHeight - 20) / 2))
+    for (let i = 0; i < topPadding; i++) {
+      lines.push('')
+    }
+
+    // Modal border and header
+    lines.push(' '.repeat(padding) + chalk.gray('╭' + '─'.repeat(modalWidth - 2) + '╮'))
+
+    // Title with package name
+    const title = ` ℹ️  ${state.name}`
+    const titlePadding = modalWidth - 4 - this.stripAnsi(title).length
+    lines.push(
+      ' '.repeat(padding) +
+        chalk.gray('│') +
+        chalk.cyan.bold(title) +
+        ' '.repeat(Math.max(0, titlePadding)) +
+        chalk.gray('│')
+    )
+
+    // License and author line
+    const authorLicense = `${state.author || 'Unknown'} • ${state.license || 'MIT'}`
+    const authorPadding = modalWidth - 4 - authorLicense.length
+    lines.push(
+      ' '.repeat(padding) +
+        chalk.gray('│') +
+        ' ' +
+        chalk.gray(authorLicense) +
+        ' '.repeat(Math.max(0, authorPadding)) +
+        chalk.gray('│')
+    )
+
+    lines.push(' '.repeat(padding) + chalk.gray('├' + '─'.repeat(modalWidth - 2) + '┤'))
+
+    // Current and target versions
+    const currentVersion = chalk.yellow(state.currentVersionSpecifier)
+    const targetVersion = chalk.green(
+      state.selectedOption === 'range' ? state.rangeVersion : state.latestVersion
+    )
+    const versionText = `Current: ${currentVersion} → Target: ${targetVersion}`
+    const versionPadding = modalWidth - 4 - this.stripAnsi(versionText).length
+    lines.push(
+      ' '.repeat(padding) +
+        chalk.gray('│') +
+        ' ' +
+        versionText +
+        ' '.repeat(Math.max(0, versionPadding)) +
+        chalk.gray('│')
+    )
+
+    // Weekly downloads
+    if (state.weeklyDownloads !== undefined) {
+      const downloadsText = `📊 ${this.formatNumber(state.weeklyDownloads)} downloads/week`
+      const downloadsPadding = modalWidth - 4 - this.stripAnsi(downloadsText).length
+      lines.push(
+        ' '.repeat(padding) +
+          chalk.gray('│') +
+          ' ' +
+          chalk.blue(downloadsText) +
+          ' '.repeat(Math.max(0, downloadsPadding)) +
+          chalk.gray('│')
+      )
+    }
+
+    // Description
+    if (state.description) {
+      lines.push(' '.repeat(padding) + chalk.gray('├' + '─'.repeat(modalWidth - 2) + '┤'))
+      const descriptionLines = this.wrapText(state.description, modalWidth - 4)
+      for (const descLine of descriptionLines) {
+        const padding2 = modalWidth - 3 - descLine.length
+        lines.push(
+          ' '.repeat(padding) +
+            chalk.gray('│') +
+            ' ' +
+            chalk.white(descLine) +
+            ' '.repeat(Math.max(0, padding2)) +
+            chalk.gray('│')
+        )
+      }
+    }
+
+    // Links section
+    if (state.repository || state.homepage) {
+      lines.push(' '.repeat(padding) + chalk.gray('├' + '─'.repeat(modalWidth - 2) + '┤'))
+
+      if (state.repository) {
+        const repoLabel = 'Releases:'
+        const repoUrl = state.repository.substring(0, modalWidth - 20)
+        const repoText = `  ${repoLabel} ${chalk.blue.underline(repoUrl)}`
+        const repoPadding = modalWidth - 4 - this.stripAnsi(repoText).length
+        lines.push(
+          ' '.repeat(padding) +
+            chalk.gray('│') +
+            repoText +
+            ' '.repeat(Math.max(0, repoPadding)) +
+            chalk.gray('│')
+        )
+      }
+
+      if (state.homepage) {
+        const homeLabel = 'Homepage:'
+        const homeUrl = state.homepage.substring(0, modalWidth - 20)
+        const homeText = `  ${homeLabel} ${chalk.blue.underline(homeUrl)}`
+        const homePadding = modalWidth - 4 - this.stripAnsi(homeText).length
+        lines.push(
+          ' '.repeat(padding) +
+            chalk.gray('│') +
+            homeText +
+            ' '.repeat(Math.max(0, homePadding)) +
+            chalk.gray('│')
+        )
+      }
+    }
+
+    // Footer with help text
+    lines.push(' '.repeat(padding) + chalk.gray('├' + '─'.repeat(modalWidth - 2) + '┤'))
+    const helpText = chalk.gray('Press I or ESC to close')
+    const helpPadding = modalWidth - 4 - this.stripAnsi(helpText).length
+    lines.push(
+      ' '.repeat(padding) +
+        chalk.gray('│') +
+        ' ' +
+        helpText +
+        ' '.repeat(Math.max(0, helpPadding)) +
+        chalk.gray('│')
+    )
+
+    lines.push(' '.repeat(padding) + chalk.gray('╰' + '─'.repeat(modalWidth - 2) + '╯'))
+
+    return lines
   }
 }

@@ -11,6 +11,7 @@ export type InputAction =
   | { type: 'bulk_select_minor' }
   | { type: 'bulk_select_latest' }
   | { type: 'bulk_unselect_all' }
+  | { type: 'toggle_info_modal' }
   | { type: 'cancel' }
   | { type: 'resize'; height: number }
 
@@ -85,10 +86,15 @@ export class InputHandler {
         this.onAction({ type: 'bulk_unselect_all' })
         break
 
+      case 'i':
+      case 'I':
+        this.onAction({ type: 'toggle_info_modal' })
+        break
+
       case 'escape':
-        this.cleanup()
-        this.onCancel()
-        return
+        // Toggle modal (close if open) or cancel if modal is not open
+        this.onAction({ type: 'toggle_info_modal' })
+        break
     }
   }
 
