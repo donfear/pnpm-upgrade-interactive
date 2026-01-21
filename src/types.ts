@@ -54,7 +54,6 @@ export interface PnpmUpgradeOptions {
   excludePatterns?: string[]
   includePeerDeps?: boolean
   includeOptionalDeps?: boolean
-  dryRun?: boolean // If true, show what would be executed without actually running pnpm install
 }
 
 export interface PackageJson {

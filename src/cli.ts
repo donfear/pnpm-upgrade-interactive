@@ -14,7 +14,6 @@ program
   .option('-e, --exclude <patterns>', 'exclude paths matching regex patterns (comma-separated)', '')
   .option('-p, --peer', 'include peer dependencies in upgrade process')
   .option('-o, --optional', 'include optional dependencies in upgrade process')
-  .option('--dry-run', 'show what would be executed without actually running pnpm install')
   .action(async (options) => {
     console.log(chalk.bold.blue('🚀 pnpm-upgrade-interactive\n'))
 
@@ -29,14 +28,12 @@ program
     // Both flags default to false (opt-in)
     const includePeerDeps = options.peer === true
     const includeOptionalDeps = options.optional === true
-    const dryRun = options.dryRun === true
 
     const upgrader = new PnpmUpgradeInteractive({
       cwd: options.dir,
       excludePatterns,
       includePeerDeps,
       includeOptionalDeps,
-      dryRun,
     })
     await upgrader.run()
   })

@@ -6,11 +6,7 @@ import { PackageInfo, UpgradeOptions, PackageUpgradeChoice } from './types'
 import { executeCommand, findWorkspaceRoot, readPackageJson } from './utils'
 
 export class PackageUpgrader {
-  private dryRun: boolean
-
-  constructor(dryRun: boolean = false) {
-    this.dryRun = dryRun
-  }
+  constructor() {}
 
   public async upgradePackages(
     choices: PackageUpgradeChoice[],
@@ -58,14 +54,8 @@ export class PackageUpgrader {
     const spinner = ora('Running pnpm install...').start()
 
     try {
-      if (this.dryRun) {
-        spinner.stop()
-        console.log(chalk.yellow(`\n[DRY RUN] Would execute: pnpm install`))
-        console.log(chalk.yellow(`[DRY RUN] In directory: ${installDir}`))
-      } else {
-        executeCommand('pnpm install', installDir)
-        spinner.succeed('Successfully ran pnpm install')
-      }
+      executeCommand('pnpm install', installDir)
+      spinner.succeed('Successfully ran pnpm install')
     } catch (error) {
       spinner.fail('Failed to run pnpm install')
       console.error(chalk.red(`Error: ${error}`))
