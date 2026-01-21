@@ -291,10 +291,24 @@ export class InteractiveUI {
       }
 
       const handleConfirm = (selectedStates: PackageSelectionState[]) => {
+        // Clean up listeners
+        if (process.stdin.setRawMode) {
+          process.stdin.setRawMode(false)
+        }
+        process.stdin.removeAllListeners('keypress')
+        process.stdin.pause()
+        process.removeAllListeners('SIGWINCH')
         resolve(selectedStates)
       }
 
       const handleCancel = () => {
+        // Clean up listeners
+        if (process.stdin.setRawMode) {
+          process.stdin.setRawMode(false)
+        }
+        process.stdin.removeAllListeners('keypress')
+        process.stdin.pause()
+        process.removeAllListeners('SIGWINCH')
         resolve(states.map((s) => ({ ...s, selectedOption: 'none' })))
       }
 
