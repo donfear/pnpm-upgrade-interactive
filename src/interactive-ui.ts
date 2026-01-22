@@ -40,29 +40,34 @@ export class InteractiveUI {
       return []
     }
 
-    // Filter packages based on options and determine label
-    // Default behavior (no flags): show dependencies + devDependencies
-    // With -p flag: show ONLY peerDependencies
-    // With -o flag: show ONLY optionalDependencies
-    // With both -p -o flags: show peerDependencies + optionalDependencies
+    // Filter packages based on CLI options.
+    // IMPORTANT: This uses an opt-in approach where:
+    // - Default (no flags): shows dependencies + devDependencies
+    // - With -p flag: shows ONLY peerDependencies (excludes dependencies)
+    // - With -o flag: shows ONLY optionalDependencies (excludes dependencies)
+    // - With -p -o flags: shows peerDependencies + optionalDependencies (excludes dependencies)
+    //
+    // This design allows users to focus on one dependency type at a time,
+    // which is useful since peer/optional deps have different upgrade semantics.
     let filteredPackages = outdatedPackages
     let dependencyTypeLabel = ''
 
     if (options?.includePeerDeps || options?.includeOptionalDeps) {
-      // If any flag is provided, filter to show only those types
+      // If any special-case flag is provided, filter to show ONLY those types
+      // (excluding regular dependencies/devDependencies)
       filteredPackages = outdatedPackages.filter((pkg) => {
         if (options.includePeerDeps && pkg.type === 'peerDependencies') return true
         if (options.includeOptionalDeps && pkg.type === 'optionalDependencies') return true
         return false
       })
 
-      // Build label
+      // Build label describing which types are shown
       const types: string[] = []
       if (options.includePeerDeps) types.push('Peer Dependencies')
       if (options.includeOptionalDeps) types.push('Optional Dependencies')
       dependencyTypeLabel = types.join(' & ')
     } else {
-      // Default: show only dependencies and devDependencies
+      // Default: show only regular dependencies and devDependencies
       filteredPackages = outdatedPackages.filter(
         (pkg) => pkg.type === 'dependencies' || pkg.type === 'devDependencies'
       )

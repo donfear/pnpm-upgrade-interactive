@@ -51,6 +51,9 @@ export class PnpmUpgradeInteractive {
           return
         }
 
+        // Validate selected choices before confirmation
+        this.validateSelectedChoices(selectedChoices, packages)
+
         // Store current selections for potential return to selection
         previousSelections = new Map()
         // Convert selectedChoices back to selection state format
@@ -103,6 +106,42 @@ export class PnpmUpgradeInteractive {
     if (!this.detector.hasPackageJson()) {
       throw new Error('No package.json found in current directory')
     }
+  }
+
+  private validateSelectedChoices(selectedChoices: any[], allPackages: any[]): void {
+    // Validate that all selected packages have valid target versions
+    const invalidChoices = selectedChoices.filter((choice) => {
+      const packageInfo = allPackages.find(
+        (pkg) => pkg.name === choice.name && pkg.packageJsonPath === choice.packageJsonPath
+      )
+      return !packageInfo || !choice.targetVersion
+    })
+
+    if (invalidChoices.length > 0) {
+      throw new Error(
+        `Invalid selections detected: ${invalidChoices.map((c) => c.name).join(', ')}. Please review your selections.`
+      )
+    }
+
+    // Print summary of what will be upgraded
+    const packageJsonPaths = new Set(selectedChoices.map((c) => c.packageJsonPath))
+    const uniquePackages = new Set(selectedChoices.map((c) => c.name))
+
+    console.log('\n' + chalk.bold('📋 Upgrade Summary'))
+    console.log(chalk.gray('─'.repeat(50)))
+    console.log(`${chalk.cyan(uniquePackages.size.toString())} package(s) will be upgraded`)
+    console.log(`${chalk.cyan(packageJsonPaths.size.toString())} package.json file(s) will be modified`)
+
+    const rangeUpgrades = selectedChoices.filter((c) => c.upgradeType === 'range').length
+    const majorUpgrades = selectedChoices.filter((c) => c.upgradeType === 'latest').length
+
+    if (rangeUpgrades > 0) {
+      console.log(`  ${chalk.yellow('●')} ${rangeUpgrades} minor/patch upgrade(s)`)
+    }
+    if (majorUpgrades > 0) {
+      console.log(`  ${chalk.red('●')} ${majorUpgrades} major upgrade(s)`)
+    }
+    console.log(chalk.gray('─'.repeat(50)))
   }
 }
 

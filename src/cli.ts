@@ -12,7 +12,7 @@ const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 
 const program = new Command()
 
 program
-  .name('pnpm-aupgrade-interactive')
+  .name('pnpm-upgrade-interactive')
   .description('Interactive upgrade tool for pnpm packages')
   .version(packageJson.version)
   .option('-d, --dir <directory>', 'specify directory to run in', process.cwd())

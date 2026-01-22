@@ -55,12 +55,6 @@ export type RenderableItem =
   | { type: 'spacer' }
   | { type: 'package'; state: PackageSelectionState; originalIndex: number }
 
-export interface UpgradeOptions {
-  packages: string[]
-  dev?: boolean
-  optional?: boolean
-}
-
 export interface PnpmUpgradeOptions {
   cwd?: string
   excludePatterns?: string[]

@@ -2,12 +2,10 @@ import ora from 'ora'
 import chalk from 'chalk'
 import { existsSync, writeFileSync } from 'fs'
 import { dirname } from 'path'
-import { PackageInfo, UpgradeOptions, PackageUpgradeChoice } from './types'
+import { PackageInfo, PackageUpgradeChoice } from './types'
 import { executeCommand, findWorkspaceRoot, readPackageJson } from './utils'
 
 export class PackageUpgrader {
-  constructor() {}
-
   public async upgradePackages(
     choices: PackageUpgradeChoice[],
     packageInfos: PackageInfo[]
@@ -157,27 +155,6 @@ export class PackageUpgrader {
     } catch (error) {
       spinner.fail(`Failed to upgrade ${type} in ${packageDir}`)
       console.error(chalk.red(`Error: ${error}`))
-      throw error
-    }
-  }
-
-  public async upgradeAll(packageInfos: PackageInfo[]): Promise<void> {
-    const outdatedPackages = packageInfos.filter((p) => p.isOutdated).map((p) => p.name)
-
-    if (outdatedPackages.length === 0) {
-      console.log(chalk.green('✅ All packages are already up to date!'))
-      return
-    }
-
-    const spinner = ora('Upgrading all outdated packages...').start()
-
-    try {
-      // Find workspace root for running pnpm update
-      const workspaceRoot = findWorkspaceRoot(process.cwd()) || process.cwd()
-      executeCommand('pnpm update', workspaceRoot)
-      spinner.succeed(`Upgraded all ${outdatedPackages.length} outdated packages!`)
-    } catch (error) {
-      spinner.fail('Failed to upgrade packages')
       throw error
     }
   }

@@ -73,35 +73,3 @@ export class VersionUtils {
     return result.join('')
   }
 }
-
-export class ColorUtils {
-  static getUpdateTypeColor(type: string): (text: string) => string {
-    switch (type) {
-      case 'major':
-        return chalk.red
-      case 'minor':
-        return chalk.yellow
-      case 'patch':
-        return chalk.green
-      case 'prerelease':
-        return chalk.magenta
-      default:
-        return chalk.gray
-    }
-  }
-
-  static getDependencyTypeColor(type: string): (text: string) => string {
-    switch (type) {
-      case 'dependencies':
-        return chalk.blue
-      case 'devDependencies':
-        return chalk.cyan
-      case 'peerDependencies':
-        return chalk.magenta
-      case 'optionalDependencies':
-        return chalk.gray
-      default:
-        return chalk.white
-    }
-  }
-}

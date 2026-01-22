@@ -7,6 +7,10 @@ import { PackageJson } from './types'
 
 const execAsync = promisify(exec)
 
+// Constants for npm registry queries
+// Batch size balances command line argument limits with parallel fetch efficiency
+const NPM_QUERY_BATCH_SIZE = 500
+
 export function findPackageJson(cwd: string = process.cwd()): string | null {
   const packageJsonPath = join(cwd, 'package.json')
   return existsSync(packageJsonPath) ? packageJsonPath : null
@@ -66,6 +70,13 @@ export function checkPnpmInstalled(): boolean {
   }
 }
 
+/**
+ * Checks if a version is outdated compared to the latest version.
+ * Handles version prefixes (^, ~, >=, etc.) by coercing them to valid semver.
+ * @param current - The current version specifier (e.g., "^1.0.0", "1.0.0")
+ * @param latest - The latest version (e.g., "2.0.0")
+ * @returns true if latest is greater than current, false otherwise or on error
+ */
 export function isVersionOutdated(current: string, latest: string): boolean {
   try {
     // Remove version prefixes like ^, ~, >=, etc.
@@ -75,29 +86,6 @@ export function isVersionOutdated(current: string, latest: string): boolean {
     return semver.gt(cleanLatest, cleanCurrent)
   } catch {
     return false
-  }
-}
-
-export function formatVersionDiff(
-  current: string,
-  latest: string
-): { current: string; latest: string; type: string } {
-  try {
-    const cleanCurrent = semver.coerce(current)?.version || current
-    const cleanLatest = semver.coerce(latest)?.version || latest
-
-    if (!semver.valid(cleanCurrent) || !semver.valid(cleanLatest)) {
-      return { current, latest, type: 'unknown' }
-    }
-
-    const diff = semver.diff(cleanCurrent, cleanLatest)
-    return {
-      current: cleanCurrent,
-      latest: cleanLatest,
-      type: diff || 'none',
-    }
-  } catch {
-    return { current, latest, type: 'unknown' }
   }
 }
 
@@ -167,6 +155,14 @@ export interface CollectDependenciesOptions {
   includeOptionalDeps?: boolean
 }
 
+/**
+ * Collects all dependencies from multiple package.json files.
+ * Always includes regular dependencies and devDependencies.
+ * Optionally includes peer and optional dependencies based on flags.
+ * @param packageJsonFiles - Array of paths to package.json files
+ * @param options - Options to include peer and/or optional dependencies
+ * @returns Array of dependency objects with name, version, type, and package.json path
+ */
 export function collectAllDependencies(
   packageJsonFiles: string[],
   options: CollectDependenciesOptions = {}
@@ -210,6 +206,13 @@ export function collectAllDependencies(
   return allDeps
 }
 
+/**
+ * Fetches package version data from npm registry for multiple packages.
+ * Processes packages in batches to optimize speed and resource usage.
+ * Only returns valid semantic versions (X.Y.Z format, excluding pre-releases).
+ * @param packageNames - Array of package names to fetch data for
+ * @returns Map of package name to object containing latestVersion and allVersions
+ */
 export async function getAllPackageData(
   packageNames: string[]
 ): Promise<Map<string, { latestVersion: string; allVersions: string[] }>> {
@@ -222,12 +225,11 @@ export async function getAllPackageData(
   const total = packageNames.length
   let completedCount = 0
 
-  // Process in parallel batches of 10 to optimize speed vs resource usage
-  const batchSize = 500
+  // Process in parallel batches to optimize speed vs resource usage
   const batches = []
 
-  for (let i = 0; i < packageNames.length; i += batchSize) {
-    batches.push(packageNames.slice(i, i + batchSize))
+  for (let i = 0; i < packageNames.length; i += NPM_QUERY_BATCH_SIZE) {
+    batches.push(packageNames.slice(i, i + NPM_QUERY_BATCH_SIZE))
   }
 
   for (const batch of batches) {
