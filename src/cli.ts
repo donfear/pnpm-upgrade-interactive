@@ -20,7 +20,7 @@ program
   .option('-p, --peer', 'include peer dependencies in upgrade process')
   .option('-o, --optional', 'include optional dependencies in upgrade process')
   .action(async (options) => {
-    console.log(chalk.bold.blue(`🚀 pnpm-upgrade-interactive v${packageJson.version}\n`))
+    console.log(chalk.bold.blue(`🚀 pnpm-upgrade-interactive\n`))
 
     // Check for updates in the background (non-blocking)
     const updateCheckPromise = checkForUpdateAsync('pnpm-upgrade-interactive', packageJson.version)

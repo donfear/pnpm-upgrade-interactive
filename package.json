@@ -16,7 +16,9 @@
     "version:minor": "pnpm version minor && git push && git push --tags",
     "version:major": "pnpm version major && git push && git push --tags",
     "format": "prettier --write src/**/*.ts",
-    "format:check": "prettier --check src/**/*.ts"
+    "format:check": "prettier --check src/**/*.ts",
+    "demo:record": "bash docs/demo/record-demo.sh",
+    "demo:setup": "cd docs/demo-project && pnpm install"
   },
   "author": "Donfear",
   "keywords": [
