@@ -67,6 +67,11 @@ dist
 tmp/
 temp/
 
+# Demo backups
+docs/demo-project/package.json.backup
+docs/demo-project/node_modules/
+docs/demo-project/pnpm-lock.yaml
+
 # Editor directories and files
 .vscode/
 .idea/
