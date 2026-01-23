@@ -277,36 +277,50 @@ export async function getAllPackageData(
         const sortedVersions = allVersions.sort(semver.rcompare)
         const latestVersion = sortedVersions.length > 0 ? sortedVersions[0] : 'unknown'
 
-        return {
+        const packageResult = {
           packageName,
           data: {
             latestVersion,
             allVersions,
           },
         }
+
+        // Update progress immediately when this package completes
+        packageData.set(packageName, packageResult.data)
+        completedCount++
+
+        if (onProgress) {
+          onProgress(packageName, completedCount, total)
+        } else {
+          const percentage = Math.round((completedCount / total) * 100)
+          showPackageProgress(`🔍 Analyzing packages... (${completedCount}/${total} - ${percentage}%)`)
+        }
+
+        return packageResult
       } catch (error) {
         // Fallback for failed packages
-        return {
+        const packageResult = {
           packageName,
           data: { latestVersion: 'unknown', allVersions: [] },
         }
+
+        // Update progress even for failed packages
+        packageData.set(packageName, packageResult.data)
+        completedCount++
+
+        if (onProgress) {
+          onProgress(packageName, completedCount, total)
+        } else {
+          const percentage = Math.round((completedCount / total) * 100)
+          showPackageProgress(`🔍 Analyzing packages... (${completedCount}/${total} - ${percentage}%)`)
+        }
+
+        return packageResult
       }
     })
 
-    // Process batch and update progress
-    const results = await Promise.all(fetchPromises)
-
-    for (const result of results) {
-      packageData.set(result.packageName, result.data)
-      completedCount++
-
-      if (onProgress) {
-        onProgress(result.packageName, completedCount, total)
-      } else {
-        const percentage = Math.round((completedCount / total) * 100)
-        showPackageProgress(`🔍 Analyzing packages... (${completedCount}/${total} - ${percentage}%)`)
-      }
-    }
+    // Wait for all promises in this batch to complete
+    await Promise.all(fetchPromises)
   }
 
   // Clear the progress line if no custom progress handler

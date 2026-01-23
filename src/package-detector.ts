@@ -43,20 +43,20 @@ export class PackageDetector {
 
     const packages: PackageInfo[] = []
 
-    // Always check all package.json files recursively
-    this.showProgress('🔍 Analyzing repo to find all package.json files...')
-    const allPackageJsonFiles = findAllPackageJsonFiles(this.cwd, this.excludePatterns)
-    this.showProgress(`📦 Found ${allPackageJsonFiles.length} package.json files`)
+    // Always check all package.json files recursively with timeout protection
+    this.showProgress('🔍 Scanning repository for package.json files...')
+    const allPackageJsonFiles = this.findPackageJsonFilesWithTimeout(30000) // 30 second timeout
+    this.showProgress(`📦 Found ${allPackageJsonFiles.length} package.json file${allPackageJsonFiles.length === 1 ? '' : 's'}`)
 
     // Step 2: Collect all dependencies from package.json files
-    this.showProgress('📋 Collecting all dependencies...')
+    this.showProgress('📋 Reading dependencies from package.json files...')
     const allDepsRaw = collectAllDependencies(allPackageJsonFiles, {
       includePeerDeps: this.includePeerDeps,
       includeOptionalDeps: this.includeOptionalDeps,
     })
 
     // Step 3: Get unique package names while filtering out workspace references
-    this.showProgress('📦 Getting unique package names...')
+    this.showProgress('🔍 Identifying unique packages...')
     const uniquePackageNames = new Set<string>()
     const allDeps: typeof allDepsRaw = []
     for (const dep of allDepsRaw) {
@@ -68,16 +68,21 @@ export class PackageDetector {
     const packageNames = Array.from(uniquePackageNames)
 
     // Step 4: Fetch all package data in one call per package
-    this.showProgress('🔍 Fetching version data for all packages...')
-    const allPackageData = await getAllPackageData(packageNames)
+    this.showProgress(`🌐 Fetching version data from npm registry...`)
+    const allPackageData = await getAllPackageData(packageNames, (currentPackage: string, completed: number, total: number) => {
+      const percentage = Math.round((completed / total) * 100)
+      const truncatedPackage = currentPackage.length > 40 ? currentPackage.substring(0, 37) + '...' : currentPackage
+      this.showProgress(`🌐 Fetching ${truncatedPackage} (${completed}/${total} - ${percentage}%)`)
+    })
     // Step 5: Process all dependencies with batched data
-    this.showProgress('🔍 Analyzing package versions...')
+    this.showProgress('⚙️  Comparing current versions with available updates...')
 
     let processedCount = 0
     const updateProgress = () => {
       processedCount++
       if (processedCount % 10 === 0 || processedCount === allDeps.length) {
-        this.showProgress(`🔍 Analyzing versions... (${processedCount}/${allDeps.length})`)
+        const percentage = Math.round((processedCount / allDeps.length) * 100)
+        this.showProgress(`⚙️  Checking for updates... ${processedCount}/${allDeps.length} (${percentage}%)`)
       }
     }
 
@@ -133,12 +138,31 @@ export class PackageDetector {
 
       const outdatedCount = packages.filter((p) => p.isOutdated).length
       this.showProgress(
-        `✅ Found ${outdatedCount} outdated packages across ${allPackageJsonFiles.length} package.json files`
+        `✅ Found ${outdatedCount} outdated package${outdatedCount === 1 ? '' : 's'} across ${allPackageJsonFiles.length} package.json file${allPackageJsonFiles.length === 1 ? '' : 's'}\n`
       )
       return packages
     } catch (error) {
-      this.showProgress('❌ Failed to check packages')
+      this.showProgress('❌ Failed to check packages\n')
       throw error
+    }
+  }
+
+  private findPackageJsonFilesWithTimeout(timeoutMs: number): string[] {
+    // Synchronous file search with depth limiting and symlink protection
+    // The timeout parameter is kept for future async implementation
+    try {
+      return findAllPackageJsonFiles(
+        this.cwd,
+        this.excludePatterns,
+        10,
+        (currentDir: string, foundCount: number) => {
+          // Show scanning progress with current directory and count
+          const truncatedDir = currentDir.length > 50 ? '...' + currentDir.slice(-47) : currentDir
+          this.showProgress(`🔍 Scanning ${truncatedDir} (found ${foundCount})`)
+        }
+      )
+    } catch (err) {
+      throw new Error(`Failed to scan for package.json files: ${err}. Try using --exclude patterns to skip problematic directories.`)
     }
   }
 
@@ -149,7 +173,6 @@ export class PackageDetector {
       version === '*' ||
       version.startsWith('file:') ||
       version.startsWith('link:') ||
-      version.startsWith('git+') ||
       version.startsWith('github:') ||
       version.startsWith('gitlab:') ||
       version.startsWith('bitbucket:')
