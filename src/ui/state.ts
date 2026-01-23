@@ -17,7 +17,7 @@ export interface UIState {
 
 export class StateManager {
   private uiState: UIState
-  private readonly headerLines = 4 // question + instructions + empty line + status line
+  private readonly headerLines = 8 // title + empty + label + empty + 2 instruction lines + status + empty
 
   constructor(initialRow: number = 0, terminalHeight: number = 24) {
     this.uiState = {
@@ -46,6 +46,12 @@ export class StateManager {
 
   // Convert package index to visual row index in renderable items
   packageIndexToVisualIndex(packageIndex: number): number {
+    // If no renderable items (flat mode), visual index equals package index
+    if (this.uiState.renderableItems.length === 0) {
+      return packageIndex
+    }
+
+    // Otherwise search in renderable items (grouped mode)
     for (let i = 0; i < this.uiState.renderableItems.length; i++) {
       const item = this.uiState.renderableItems[i]
       if (item.type === 'package' && item.originalIndex === packageIndex) {

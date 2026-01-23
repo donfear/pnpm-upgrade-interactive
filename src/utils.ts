@@ -1,5 +1,5 @@
 import { execSync, exec } from 'child_process'
-import { readFileSync, existsSync, readdirSync, statSync } from 'fs'
+import { readFileSync, existsSync, readdirSync, statSync, realpathSync } from 'fs'
 import { join, relative } from 'path'
 import * as semver from 'semver'
 import { promisify } from 'util'
@@ -91,9 +91,13 @@ export function isVersionOutdated(current: string, latest: string): boolean {
 
 export function findAllPackageJsonFiles(
   rootDir: string = process.cwd(),
-  excludePatterns: string[] = []
+  excludePatterns: string[] = [],
+  maxDepth: number = 10,
+  onProgress?: (current: string, found: number) => void
 ): string[] {
   const packageJsonFiles: string[] = []
+  const visitedPaths = new Set<string>()
+  let directoriesScanned = 0
 
   // Compile regex patterns for exclude filtering
   const excludeRegexes = excludePatterns.map((pattern) => new RegExp(pattern, 'i'))
@@ -102,17 +106,44 @@ export function findAllPackageJsonFiles(
     return excludeRegexes.some((regex) => regex.test(relativePath))
   }
 
-  function traverseDirectory(dir: string): void {
+  function traverseDirectory(dir: string, depth: number = 0): void {
+    // Prevent infinite recursion with depth limit
+    if (depth > maxDepth) {
+      return
+    }
+
     try {
+      // Prevent symlink cycles by tracking visited real paths
+      const realPath = realpathSync(dir)
+      if (visitedPaths.has(realPath)) {
+        return
+      }
+      visitedPaths.add(realPath)
+
+      directoriesScanned++
+
+      // Report progress every 10 directories or on first scan
+      if (onProgress && (directoriesScanned % 10 === 0 || directoriesScanned === 1)) {
+        const relativePath = relative(rootDir, dir) || '.'
+        onProgress(relativePath, packageJsonFiles.length)
+      }
+
       const files = readdirSync(dir)
 
       for (const file of files) {
         const fullPath = join(dir, file)
         const relativePath = relative(rootDir, fullPath)
-        const stat = statSync(fullPath)
 
         // Skip if path matches exclude patterns
         if (shouldExcludePath(relativePath)) {
+          continue
+        }
+
+        let stat
+        try {
+          stat = statSync(fullPath)
+        } catch {
+          // Skip files/dirs we can't stat (broken symlinks, permission issues)
           continue
         }
 
@@ -136,7 +167,7 @@ export function findAllPackageJsonFiles(
           'cjs',
         ]
         if (stat.isDirectory() && !file.startsWith('.') && !skipDirs.includes(file)) {
-          traverseDirectory(fullPath)
+          traverseDirectory(fullPath, depth + 1)
         } else if (file === 'package.json' && stat.isFile()) {
           packageJsonFiles.push(fullPath)
         }
@@ -211,10 +242,12 @@ export function collectAllDependencies(
  * Processes packages in batches to optimize speed and resource usage.
  * Only returns valid semantic versions (X.Y.Z format, excluding pre-releases).
  * @param packageNames - Array of package names to fetch data for
+ * @param onProgress - Optional callback for progress updates (currentPackage, completed, total)
  * @returns Map of package name to object containing latestVersion and allVersions
  */
 export async function getAllPackageData(
-  packageNames: string[]
+  packageNames: string[],
+  onProgress?: (currentPackage: string, completed: number, total: number) => void
 ): Promise<Map<string, { latestVersion: string; allVersions: string[] }>> {
   const packageData = new Map<string, { latestVersion: string; allVersions: string[] }>()
 
@@ -244,35 +277,56 @@ export async function getAllPackageData(
         const sortedVersions = allVersions.sort(semver.rcompare)
         const latestVersion = sortedVersions.length > 0 ? sortedVersions[0] : 'unknown'
 
-        return {
+        const packageResult = {
           packageName,
           data: {
             latestVersion,
             allVersions,
           },
         }
+
+        // Update progress immediately when this package completes
+        packageData.set(packageName, packageResult.data)
+        completedCount++
+
+        if (onProgress) {
+          onProgress(packageName, completedCount, total)
+        } else {
+          const percentage = Math.round((completedCount / total) * 100)
+          showPackageProgress(`🔍 Analyzing packages... (${completedCount}/${total} - ${percentage}%)`)
+        }
+
+        return packageResult
       } catch (error) {
         // Fallback for failed packages
-        return {
+        const packageResult = {
           packageName,
           data: { latestVersion: 'unknown', allVersions: [] },
         }
+
+        // Update progress even for failed packages
+        packageData.set(packageName, packageResult.data)
+        completedCount++
+
+        if (onProgress) {
+          onProgress(packageName, completedCount, total)
+        } else {
+          const percentage = Math.round((completedCount / total) * 100)
+          showPackageProgress(`🔍 Analyzing packages... (${completedCount}/${total} - ${percentage}%)`)
+        }
+
+        return packageResult
       }
     })
 
-    // Process batch and update progress
-    const results = await Promise.all(fetchPromises)
-
-    for (const result of results) {
-      packageData.set(result.packageName, result.data)
-      completedCount++
-      const percentage = Math.round((completedCount / total) * 100)
-      showPackageProgress(`🔍 Analyzing packages... (${completedCount}/${total} - ${percentage}%)`)
-    }
+    // Wait for all promises in this batch to complete
+    await Promise.all(fetchPromises)
   }
 
-  // Clear the progress line
-  process.stdout.write('\r' + ' '.repeat(80) + '\r')
+  // Clear the progress line if no custom progress handler
+  if (!onProgress) {
+    process.stdout.write('\r' + ' '.repeat(80) + '\r')
+  }
 
   return packageData
 }

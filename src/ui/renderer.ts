@@ -178,7 +178,8 @@ export class UIRenderer {
 
     // Show status line with item range
     const totalPackages = states.length
-    const totalVisualItems = renderableItems?.length ?? totalPackages
+    // Use renderableItems length only if we have renderable items (grouped mode), otherwise use totalPackages (flat mode)
+    const totalVisualItems = renderableItems && renderableItems.length > 0 ? renderableItems.length : totalPackages
     const startItem = scrollOffset + 1
     const endItem = Math.min(scrollOffset + maxVisibleItems, totalVisualItems)
     const statusLine =
