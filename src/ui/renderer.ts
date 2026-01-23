@@ -172,9 +172,11 @@ export class UIRenderer {
         chalk.gray('Select all minor') +
         '  ' +
         chalk.bold.white('L ') +
-        chalk.gray('Select all')
+        chalk.gray('Select all') +
+        '  ' +
+        chalk.bold.white('U ') +
+        chalk.gray('Unselect all')
     )
-    output.push('  ' + chalk.bold.white('U ') + chalk.gray('Unselect all'))
 
     // Show status line with item range
     const totalPackages = states.length

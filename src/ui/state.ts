@@ -17,7 +17,7 @@ export interface UIState {
 
 export class StateManager {
   private uiState: UIState
-  private readonly headerLines = 8 // title + empty + label + empty + 2 instruction lines + status + empty
+  private readonly headerLines = 7 // title + empty + label + empty + 1 instruction line + status + empty
 
   constructor(initialRow: number = 0, terminalHeight: number = 24) {
     this.uiState = {
