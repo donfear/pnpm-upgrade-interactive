@@ -45,16 +45,7 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Install VHS for demo recording
-        run: |
-          wget https://github.com/charmbracelet/vhs/releases/download/v0.8.0/vhs_0.8.0_amd64.deb
-          sudo dpkg -i vhs_0.8.0_amd64.deb
-          sudo apt-get install -f
-
-      - name: Install ffmpeg (required by VHS)
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-
-      - name: Version bump and tag (includes demo recording)
+      - name: Version bump and tag
         run: |
           git config --local user.email "${{ secrets.GH_EMAIL }}"
           git config --local user.name "${{ secrets.GH_USERNAME }}"
