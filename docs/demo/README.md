@@ -50,10 +50,11 @@ The recording script (`record-demo.sh`) automatically:
 **Adjusting the Recording:**
 
 Edit `demo-real.tape` to:
-- Change `Sleep` durations if your CLI loads faster/slower (currently 5s for initial load)
+- Change `Sleep` durations if your CLI loads faster/slower (currently 3s for initial load)
 - Modify keyboard interactions (Up/Down/Left/Right/M/L/U/Enter)
 - Adjust window size, theme, or playback speed
-- The demo actually performs upgrades with two Enter presses (confirm selections, then install)
+- The demo shows selecting all minor updates, then customizing individual packages (major, minor, keep current)
+- Two Enter presses complete the upgrade (confirm selections, then install)
 
 ### Option 2: Asciinema + agg (Recommended for Interactive CLIs)
 
@@ -142,7 +143,7 @@ This ensures there are always packages to upgrade in the demo.
 ## Troubleshooting
 
 **VHS tape times out or shows partial UI:**
-- Increase the `Sleep` duration after running the CLI (currently 5s in `demo-real.tape`)
+- Increase the `Sleep` duration after running the CLI (currently 3s in `demo-real.tape`)
 - Your internet might be slow, affecting npm registry queries
 - The demo actually runs upgrades, so make sure the demo project has internet access
 
