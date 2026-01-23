@@ -12,6 +12,7 @@
     "start": "node dist/cli.js",
     "prepare": "pnpm build",
     "link": "pnpm build && pnpm link --global",
+    "version": "pnpm demo:record && git add docs/demo/interactive-upgrade.gif",
     "version:patch": "pnpm version patch && git push && git push --tags",
     "version:minor": "pnpm version minor && git push && git push --tags",
     "version:major": "pnpm version major && git push && git push --tags",
