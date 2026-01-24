@@ -4,7 +4,6 @@ import { join, relative } from 'path'
 import * as semver from 'semver'
 import { promisify } from 'util'
 import pLimit from 'p-limit'
-import { changelogFetcher } from './changelog-fetcher'
 import { PackageJson } from './types'
 
 const execAsync = promisify(exec)
@@ -308,22 +307,6 @@ async function fetchPackageFromRegistry(
     packageCache.set(packageName, {
       data: result,
       timestamp: Date.now(),
-    })
-
-    // Also cache metadata for the changelog fetcher to avoid duplicate fetches
-    const distTags = data['dist-tags']
-    const latestTag = distTags?.latest
-    const versions = data.versions as Record<string, any> | undefined
-    const latestPackageData = latestTag ? versions?.[latestTag] : undefined
-
-    changelogFetcher.cacheMetadata(packageName, {
-      description: data.description || 'No description available',
-      homepage: data.homepage || latestPackageData?.homepage,
-      repository: data.repository || latestPackageData?.repository,
-      bugs: data.bugs || latestPackageData?.bugs,
-      keywords: data.keywords || [],
-      author: data.author || latestPackageData?.author,
-      license: data.license || latestPackageData?.license,
     })
 
     return result
