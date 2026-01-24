@@ -201,6 +201,42 @@ export class ChangelogFetcher {
   }
 
   /**
+   * Cache package metadata directly (used by utils to avoid duplicate fetches)
+   */
+  cacheMetadata(packageName: string, rawData: {
+    description?: string
+    homepage?: string
+    repository?: any
+    bugs?: any
+    keywords?: string[]
+    author?: any
+    license?: string
+  }): void {
+    const repositoryUrl = this.extractRepositoryUrl(rawData.repository?.url || '')
+    const npmUrl = `https://www.npmjs.com/package/${encodeURIComponent(packageName)}`
+    const issuesUrl = repositoryUrl ? `${repositoryUrl}/issues` : undefined
+
+    const metadata: PackageMetadata = {
+      description: rawData.description || 'No description available',
+      homepage: rawData.homepage,
+      repository: rawData.repository,
+      bugs: rawData.bugs,
+      keywords: rawData.keywords || [],
+      author: rawData.author?.name || rawData.author,
+      license: rawData.license,
+      repositoryUrl,
+      npmUrl,
+      issuesUrl,
+    }
+
+    if (repositoryUrl) {
+      metadata.releaseNotes = `${repositoryUrl}/releases`
+    }
+
+    this.cache.set(packageName, metadata)
+  }
+
+  /**
    * Clear the cache (useful for testing)
    */
   clearCache(): void {
