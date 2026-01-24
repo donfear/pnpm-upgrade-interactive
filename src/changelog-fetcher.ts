@@ -99,15 +99,14 @@ export class ChangelogFetcher {
    * Returns the package data from the registry
    */
   private async fetchFromRegistry(packageName: string): Promise<any> {
-    // Use a simple fetch with timeout
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 5000) // 5 second timeout
-
     try {
       const response = await fetch(
         `https://registry.npmjs.org/${encodeURIComponent(packageName)}`,
         {
-          signal: controller.signal,
+          method: 'GET',
+          headers: {
+            accept: 'application/json',
+          },
         }
       )
 
@@ -131,8 +130,8 @@ export class ChangelogFetcher {
         author: (data.author || latestPackageData?.author) as any,
         license: (data.license || latestPackageData?.license) as string | undefined,
       }
-    } finally {
-      clearTimeout(timeout)
+    } catch {
+      return null
     }
   }
 
@@ -166,13 +165,15 @@ export class ChangelogFetcher {
   private async fetchDownloadStats(
     packageName: string
   ): Promise<{ downloads: number } | null> {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 3000) // 3 second timeout
-
     try {
       const response = await fetch(
         `https://api.npmjs.org/downloads/point/last-week/${encodeURIComponent(packageName)}`,
-        { signal: controller.signal }
+        {
+          method: 'GET',
+          headers: {
+            accept: 'application/json',
+          },
+        }
       )
 
       if (!response.ok) {
@@ -185,8 +186,6 @@ export class ChangelogFetcher {
       }
     } catch {
       return null
-    } finally {
-      clearTimeout(timeout)
     }
   }
 

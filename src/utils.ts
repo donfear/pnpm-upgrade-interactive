@@ -9,8 +9,8 @@ import { PackageJson } from './types'
 const execAsync = promisify(exec)
 
 // Constants for npm registry queries
-// Maximum concurrent HTTP requests to npm registry
-const MAX_CONCURRENT_REQUESTS = 50
+// Maximum concurrent requests (controlled by p-limit)
+const MAX_CONCURRENT_REQUESTS = 80
 // Cache TTL in milliseconds (5 minutes)
 const CACHE_TTL = 5 * 60 * 1000
 
@@ -249,6 +249,7 @@ export function collectAllDependencies(
 
 /**
  * Fetches package data from npm registry with caching.
+ * Uses native fetch for HTTP requests with connection pooling.
  * @param packageName - Name of the package to fetch
  * @returns Package data with latestVersion and allVersions
  */
@@ -262,9 +263,14 @@ async function fetchPackageFromRegistry(
   }
 
   try {
-    // Direct HTTP call to npm registry
+    // Direct HTTP call to npm registry using native fetch
     const url = `https://registry.npmjs.org/${encodeURIComponent(packageName)}`
-    const response = await fetch(url)
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        accept: 'application/json',
+      },
+    })
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`)
@@ -302,7 +308,7 @@ async function fetchPackageFromRegistry(
 
 /**
  * Fetches package version data from npm registry for multiple packages.
- * Uses direct HTTP calls with concurrency control and caching for optimal performance.
+ * Uses native fetch + p-limit for optimal concurrency control.
  * Only returns valid semantic versions (X.Y.Z format, excluding pre-releases).
  * @param packageNames - Array of package names to fetch data for
  * @param onProgress - Optional callback for progress updates (currentPackage, completed, total)
@@ -320,12 +326,12 @@ export async function getAllPackageData(
 
   const total = packageNames.length
   let completedCount = 0
+  const startTime = Date.now()
 
-  // Create concurrency limiter
+  // Use p-limit for controlled concurrency + native fetch for HTTP
   const limit = pLimit(MAX_CONCURRENT_REQUESTS)
 
-  // Fetch all packages in parallel with concurrency control
-  const fetchPromises = packageNames.map((packageName) =>
+  const allPromises = packageNames.map((packageName) =>
     limit(async () => {
       const data = await fetchPackageFromRegistry(packageName)
       packageData.set(packageName, data)
@@ -336,17 +342,22 @@ export async function getAllPackageData(
         onProgress(packageName, completedCount, total)
       } else {
         const percentage = Math.round((completedCount / total) * 100)
-        showPackageProgress(`🔍 Analyzing packages... (${completedCount}/${total} - ${percentage}%)`)
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
+        showPackageProgress(
+          `🔍 Analyzing packages... (${completedCount}/${total} - ${percentage}% - ${elapsed}s)`
+        )
       }
     })
   )
 
-  // Wait for all fetches to complete
-  await Promise.all(fetchPromises)
+  // Wait for all requests to complete
+  await Promise.all(allPromises)
 
-  // Clear the progress line if no custom progress handler
+  // Clear the progress line and show completion time if no custom progress handler
   if (!onProgress) {
+    const totalTime = ((Date.now() - startTime) / 1000).toFixed(2)
     process.stdout.write('\r' + ' '.repeat(80) + '\r')
+    console.log(`✓ Fetched ${total} packages in ${totalTime}s`)
   }
 
   return packageData
