@@ -6,10 +6,7 @@ import {
   findAllPackageJsonFiles,
   collectAllDependencies,
   getAllPackageData,
-  getOptimizedRangeVersion,
   findClosestMinorVersion,
-  isVersionOutdated,
-  findWorkspaceRoot,
 } from './utils'
 
 export class PackageDetector {
@@ -46,10 +43,10 @@ export class PackageDetector {
     // Always check all package.json files recursively with timeout protection
     this.showProgress('🔍 Scanning repository for package.json files...')
     const allPackageJsonFiles = this.findPackageJsonFilesWithTimeout(30000) // 30 second timeout
-    this.showProgress(`📦 Found ${allPackageJsonFiles.length} package.json file${allPackageJsonFiles.length === 1 ? '' : 's'}`)
+    this.showProgress(`🔍 Found ${allPackageJsonFiles.length} package.json file${allPackageJsonFiles.length === 1 ? '' : 's'}`)
 
     // Step 2: Collect all dependencies from package.json files
-    this.showProgress('📋 Reading dependencies from package.json files...')
+    this.showProgress('🔍 Reading dependencies from package.json files...')
     const allDepsRaw = collectAllDependencies(allPackageJsonFiles, {
       includePeerDeps: this.includePeerDeps,
       includeOptionalDeps: this.includeOptionalDeps,
@@ -68,16 +65,11 @@ export class PackageDetector {
     const packageNames = Array.from(uniquePackageNames)
 
     // Step 4: Fetch all package data in one call per package
-    const fetchStartTime = Date.now()
     const allPackageData = await getAllPackageData(packageNames, (currentPackage: string, completed: number, total: number) => {
       const percentage = Math.round((completed / total) * 100)
       const truncatedPackage = currentPackage.length > 40 ? currentPackage.substring(0, 37) + '...' : currentPackage
       this.showProgress(`🌐 Fetching ${percentage}% (${truncatedPackage})`)
     })
-    const totalFetchTime = ((Date.now() - fetchStartTime) / 1000).toFixed(2)
-    this.showProgress(`✓ Fetched ${packageNames.length} packages in ${totalFetchTime}s\n`)
-    // Step 5: Process all dependencies with batched data
-    this.showProgress('⚙️  Analyzing package versions...')
 
     try {
       for (const dep of allDeps) {
@@ -128,10 +120,6 @@ export class PackageDetector {
         }
       }
 
-      const outdatedCount = packages.filter((p) => p.isOutdated).length
-      this.showProgress(
-        `✅ Found ${outdatedCount} outdated package${outdatedCount === 1 ? '' : 's'} across ${allPackageJsonFiles.length} package.json file${allPackageJsonFiles.length === 1 ? '' : 's'}\n`
-      )
       return packages
     } catch (error) {
       this.showProgress('❌ Failed to check packages\n')
