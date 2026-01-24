@@ -75,16 +75,7 @@ export class PackageDetector {
       this.showProgress(`🌐 Fetching ${truncatedPackage} (${completed}/${total} - ${percentage}%)`)
     })
     // Step 5: Process all dependencies with batched data
-    this.showProgress('⚙️  Comparing current versions with available updates...')
-
-    let processedCount = 0
-    const updateProgress = () => {
-      processedCount++
-      if (processedCount % 10 === 0 || processedCount === allDeps.length) {
-        const percentage = Math.round((processedCount / allDeps.length) * 100)
-        this.showProgress(`⚙️  Checking for updates... ${processedCount}/${allDeps.length} (${percentage}%)`)
-      }
-    }
+    this.showProgress('⚙️  Analyzing package versions...')
 
     try {
       for (const dep of allDeps) {
@@ -133,7 +124,6 @@ export class PackageDetector {
             hasMajorUpdate: false,
           })
         }
-        updateProgress()
       }
 
       const outdatedCount = packages.filter((p) => p.isOutdated).length
