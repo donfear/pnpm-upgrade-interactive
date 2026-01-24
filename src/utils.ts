@@ -3,13 +3,23 @@ import { readFileSync, existsSync, readdirSync, statSync, realpathSync } from 'f
 import { join, relative } from 'path'
 import * as semver from 'semver'
 import { promisify } from 'util'
+import pLimit from 'p-limit'
 import { PackageJson } from './types'
 
 const execAsync = promisify(exec)
 
 // Constants for npm registry queries
-// Batch size balances command line argument limits with parallel fetch efficiency
-const NPM_QUERY_BATCH_SIZE = 500
+// Maximum concurrent HTTP requests to npm registry
+const MAX_CONCURRENT_REQUESTS = 50
+// Cache TTL in milliseconds (5 minutes)
+const CACHE_TTL = 5 * 60 * 1000
+
+// In-memory cache for package data
+interface CacheEntry {
+  data: { latestVersion: string; allVersions: string[] }
+  timestamp: number
+}
+const packageCache = new Map<string, CacheEntry>()
 
 export function findPackageJson(cwd: string = process.cwd()): string | null {
   const packageJsonPath = join(cwd, 'package.json')
@@ -238,8 +248,61 @@ export function collectAllDependencies(
 }
 
 /**
+ * Fetches package data from npm registry with caching.
+ * @param packageName - Name of the package to fetch
+ * @returns Package data with latestVersion and allVersions
+ */
+async function fetchPackageFromRegistry(
+  packageName: string
+): Promise<{ latestVersion: string; allVersions: string[] }> {
+  // Check cache first
+  const cached = packageCache.get(packageName)
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data
+  }
+
+  try {
+    // Direct HTTP call to npm registry
+    const url = `https://registry.npmjs.org/${encodeURIComponent(packageName)}`
+    const response = await fetch(url)
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+
+    const data = (await response.json()) as { versions?: Record<string, unknown> }
+
+    // Extract versions and filter to valid semver (X.Y.Z format, no pre-releases)
+    const allVersions = Object.keys(data.versions || {}).filter((version) => {
+      // Match only X.Y.Z format (no pre-release, no build metadata)
+      return /^[0-9]+\.[0-9]+\.[0-9]+$/.test(version)
+    })
+
+    // Sort versions to find the latest
+    const sortedVersions = allVersions.sort(semver.rcompare)
+    const latestVersion = sortedVersions.length > 0 ? sortedVersions[0] : 'unknown'
+
+    const result = {
+      latestVersion,
+      allVersions,
+    }
+
+    // Cache the result
+    packageCache.set(packageName, {
+      data: result,
+      timestamp: Date.now(),
+    })
+
+    return result
+  } catch (error) {
+    // Return fallback data for failed packages
+    return { latestVersion: 'unknown', allVersions: [] }
+  }
+}
+
+/**
  * Fetches package version data from npm registry for multiple packages.
- * Processes packages in batches to optimize speed and resource usage.
+ * Uses direct HTTP calls with concurrency control and caching for optimal performance.
  * Only returns valid semantic versions (X.Y.Z format, excluding pre-releases).
  * @param packageNames - Array of package names to fetch data for
  * @param onProgress - Optional callback for progress updates (currentPackage, completed, total)
@@ -258,70 +321,28 @@ export async function getAllPackageData(
   const total = packageNames.length
   let completedCount = 0
 
-  // Process in parallel batches to optimize speed vs resource usage
-  const batches = []
+  // Create concurrency limiter
+  const limit = pLimit(MAX_CONCURRENT_REQUESTS)
 
-  for (let i = 0; i < packageNames.length; i += NPM_QUERY_BATCH_SIZE) {
-    batches.push(packageNames.slice(i, i + NPM_QUERY_BATCH_SIZE))
-  }
+  // Fetch all packages in parallel with concurrency control
+  const fetchPromises = packageNames.map((packageName) =>
+    limit(async () => {
+      const data = await fetchPackageFromRegistry(packageName)
+      packageData.set(packageName, data)
 
-  for (const batch of batches) {
-    const fetchPromises = batch.map(async (packageName) => {
-      try {
-        // Get all versions for the package
-        const command = `pnpm view ${packageName} versions --json | jq '[.[] | select(test("^[0-9]+\\\\.[0-9]+\\\\.[0-9]+$"))]'`
-        const result = await executeCommandAsync(command)
-        const allVersions = JSON.parse(result) as string[]
+      completedCount++
 
-        // Sort versions to find the latest
-        const sortedVersions = allVersions.sort(semver.rcompare)
-        const latestVersion = sortedVersions.length > 0 ? sortedVersions[0] : 'unknown'
-
-        const packageResult = {
-          packageName,
-          data: {
-            latestVersion,
-            allVersions,
-          },
-        }
-
-        // Update progress immediately when this package completes
-        packageData.set(packageName, packageResult.data)
-        completedCount++
-
-        if (onProgress) {
-          onProgress(packageName, completedCount, total)
-        } else {
-          const percentage = Math.round((completedCount / total) * 100)
-          showPackageProgress(`🔍 Analyzing packages... (${completedCount}/${total} - ${percentage}%)`)
-        }
-
-        return packageResult
-      } catch (error) {
-        // Fallback for failed packages
-        const packageResult = {
-          packageName,
-          data: { latestVersion: 'unknown', allVersions: [] },
-        }
-
-        // Update progress even for failed packages
-        packageData.set(packageName, packageResult.data)
-        completedCount++
-
-        if (onProgress) {
-          onProgress(packageName, completedCount, total)
-        } else {
-          const percentage = Math.round((completedCount / total) * 100)
-          showPackageProgress(`🔍 Analyzing packages... (${completedCount}/${total} - ${percentage}%)`)
-        }
-
-        return packageResult
+      if (onProgress) {
+        onProgress(packageName, completedCount, total)
+      } else {
+        const percentage = Math.round((completedCount / total) * 100)
+        showPackageProgress(`🔍 Analyzing packages... (${completedCount}/${total} - ${percentage}%)`)
       }
     })
+  )
 
-    // Wait for all promises in this batch to complete
-    await Promise.all(fetchPromises)
-  }
+  // Wait for all fetches to complete
+  await Promise.all(fetchPromises)
 
   // Clear the progress line if no custom progress handler
   if (!onProgress) {
