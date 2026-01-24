@@ -59,9 +59,9 @@
     "commander": "^14.0.2",
     "inquirer": "^13.2.1",
     "keypress": "^0.2.1",
-    "ora": "^9.1.0",
-    "semver": "^7.7.3",
-    "table": "^6.9.0"
+    "nanospinner": "^1.2.2",
+    "p-limit": "^7.2.0",
+    "semver": "^7.7.3"
   },
   "engines": {
     "node": ">=20.0.0"

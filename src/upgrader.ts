@@ -1,5 +1,5 @@
-import ora from 'ora'
 import chalk from 'chalk'
+import { createSpinner } from 'nanospinner'
 import { existsSync, writeFileSync } from 'fs'
 import { dirname } from 'path'
 import { PackageInfo, PackageUpgradeChoice } from './types'
@@ -49,13 +49,13 @@ export class PackageUpgrader {
     const workspaceRoot = findWorkspaceRoot(firstPackageDir)
     const installDir = workspaceRoot || firstPackageDir
 
-    const spinner = ora('Running pnpm install...').start()
+    const spinner = createSpinner('Running pnpm install...').start()
 
     try {
       executeCommand('pnpm install', installDir)
-      spinner.succeed('Successfully ran pnpm install')
+      spinner.success()
     } catch (error) {
-      spinner.fail('Failed to run pnpm install')
+      spinner.error()
       console.error(chalk.red(`Error: ${error}`))
       throw error
     }
@@ -97,7 +97,7 @@ export class PackageUpgrader {
     }
 
     const packageDir = packageJsonPath.replace('/package.json', '')
-    const spinner = ora(`Upgrading ${type} in ${packageDir}...`).start()
+    const spinner = createSpinner(`Upgrading ${type} in ${packageDir}...`).start()
 
     try {
       // Read the current package.json
@@ -140,10 +140,9 @@ export class PackageUpgrader {
       // Write back the modified package.json
       if (modified) {
         writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n')
-        spinner.text = `Updated package.json for ${choices.length} ${type}`
       }
 
-      spinner.succeed(`Upgraded ${choices.length} ${type} in ${packageDir}`)
+      spinner.success({ text: `Upgraded ${choices.length} ${type} in ${packageDir}` })
 
       // Show which packages were upgraded
       choices.forEach((choice) => {
@@ -153,7 +152,7 @@ export class PackageUpgrader {
         )
       })
     } catch (error) {
-      spinner.fail(`Failed to upgrade ${type} in ${packageDir}`)
+      spinner.error({ text: `Failed to upgrade ${type} in ${packageDir}` })
       console.error(chalk.red(`Error: ${error}`))
       throw error
     }
