@@ -269,7 +269,7 @@ async function fetchPackageFromRegistry(
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        accept: 'application/json',
+        accept: 'application/vnd.npm.install-v1+json',
       },
     })
 
@@ -353,7 +353,6 @@ export async function getAllPackageData(
 
   const total = packageNames.length
   let completedCount = 0
-  const startTime = Date.now()
 
   // Use p-limit for controlled concurrency + native fetch for HTTP
   const limit = pLimit(MAX_CONCURRENT_REQUESTS)
@@ -367,12 +366,6 @@ export async function getAllPackageData(
 
       if (onProgress) {
         onProgress(packageName, completedCount, total)
-      } else {
-        const percentage = Math.round((completedCount / total) * 100)
-        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
-        showPackageProgress(
-          `🔍 Analyzing packages... (${completedCount}/${total} - ${percentage}% - ${elapsed}s)`
-        )
       }
     })
   )
@@ -382,18 +375,12 @@ export async function getAllPackageData(
 
   // Clear the progress line and show completion time if no custom progress handler
   if (!onProgress) {
-    const totalTime = ((Date.now() - startTime) / 1000).toFixed(2)
     process.stdout.write('\r' + ' '.repeat(80) + '\r')
-    console.log(`✓ Fetched ${total} packages in ${totalTime}s`)
   }
 
   return packageData
 }
 
-function showPackageProgress(message: string): void {
-  // Clear current line and show new message
-  process.stdout.write(`\r${' '.repeat(80)}\r${message}`)
-}
 export function getOptimizedRangeVersion(
   packageName: string,
   currentRange: string,
