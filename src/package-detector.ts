@@ -68,13 +68,11 @@ export class PackageDetector {
     const packageNames = Array.from(uniquePackageNames)
 
     // Step 4: Fetch all package data in one call per package
-    this.showProgress(`🌐 Fetching version data from npm registry...`)
     const fetchStartTime = Date.now()
     const allPackageData = await getAllPackageData(packageNames, (currentPackage: string, completed: number, total: number) => {
       const percentage = Math.round((completed / total) * 100)
-      const elapsed = ((Date.now() - fetchStartTime) / 1000).toFixed(1)
       const truncatedPackage = currentPackage.length > 40 ? currentPackage.substring(0, 37) + '...' : currentPackage
-      this.showProgress(`🌐 Fetching ${truncatedPackage} (${completed}/${total} - ${percentage}% - ${elapsed}s)`)
+      this.showProgress(`🌐 Fetching ${percentage}% (${truncatedPackage})`)
     })
     const totalFetchTime = ((Date.now() - fetchStartTime) / 1000).toFixed(2)
     this.showProgress(`✓ Fetched ${packageNames.length} packages in ${totalFetchTime}s\n`)
