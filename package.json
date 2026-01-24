@@ -43,7 +43,7 @@
     "url": "https://github.com/donfear/pnpm-upgrade-interactive/issues"
   },
   "files": [
-    "dist",
+    "dist/**/*.js",
     "README.md"
   ],
   "devDependencies": {

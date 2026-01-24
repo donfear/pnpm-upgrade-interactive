@@ -44,12 +44,29 @@ Sleep 400ms
 Down
 Sleep 400ms
 
-# Go left to current version (unselect this one)
+# Navigate down 2 more packages to demonstrate info modal
+Down
+Sleep 400ms
+Down
+Sleep 400ms
+
+# Press 'i' to show info modal for current package
+Type "i"
+Sleep 1.5s
+
+# Press 'i' again to toggle info modal
+Type "i"
+Sleep 400ms
+
+# Navigate back up
+Up
+Sleep 400ms
+# Navigate left
 Left
-Sleep 600ms
+Sleep 400ms
 
 # Quick pause to show final selections
-Sleep 1.5s
+Sleep 1s
 
 # Press Enter to confirm selections
 Enter
