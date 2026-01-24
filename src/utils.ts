@@ -4,7 +4,6 @@ import { join, relative } from 'path'
 import * as semver from 'semver'
 import { promisify } from 'util'
 import pLimit from 'p-limit'
-import { changelogFetcher } from './changelog-fetcher'
 import { PackageJson } from './types'
 
 const execAsync = promisify(exec)
@@ -269,7 +268,7 @@ async function fetchPackageFromRegistry(
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        accept: 'application/json',
+        accept: 'application/vnd.npm.install-v1+json',
       },
     })
 
@@ -310,22 +309,6 @@ async function fetchPackageFromRegistry(
       timestamp: Date.now(),
     })
 
-    // Also cache metadata for the changelog fetcher to avoid duplicate fetches
-    const distTags = data['dist-tags']
-    const latestTag = distTags?.latest
-    const versions = data.versions as Record<string, any> | undefined
-    const latestPackageData = latestTag ? versions?.[latestTag] : undefined
-
-    changelogFetcher.cacheMetadata(packageName, {
-      description: data.description || 'No description available',
-      homepage: data.homepage || latestPackageData?.homepage,
-      repository: data.repository || latestPackageData?.repository,
-      bugs: data.bugs || latestPackageData?.bugs,
-      keywords: data.keywords || [],
-      author: data.author || latestPackageData?.author,
-      license: data.license || latestPackageData?.license,
-    })
-
     return result
   } catch (error) {
     // Return fallback data for failed packages
@@ -353,7 +336,6 @@ export async function getAllPackageData(
 
   const total = packageNames.length
   let completedCount = 0
-  const startTime = Date.now()
 
   // Use p-limit for controlled concurrency + native fetch for HTTP
   const limit = pLimit(MAX_CONCURRENT_REQUESTS)
@@ -367,12 +349,6 @@ export async function getAllPackageData(
 
       if (onProgress) {
         onProgress(packageName, completedCount, total)
-      } else {
-        const percentage = Math.round((completedCount / total) * 100)
-        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
-        showPackageProgress(
-          `🔍 Analyzing packages... (${completedCount}/${total} - ${percentage}% - ${elapsed}s)`
-        )
       }
     })
   )
@@ -382,18 +358,12 @@ export async function getAllPackageData(
 
   // Clear the progress line and show completion time if no custom progress handler
   if (!onProgress) {
-    const totalTime = ((Date.now() - startTime) / 1000).toFixed(2)
     process.stdout.write('\r' + ' '.repeat(80) + '\r')
-    console.log(`✓ Fetched ${total} packages in ${totalTime}s`)
   }
 
   return packageData
 }
 
-function showPackageProgress(message: string): void {
-  // Clear current line and show new message
-  process.stdout.write(`\r${' '.repeat(80)}\r${message}`)
-}
 export function getOptimizedRangeVersion(
   packageName: string,
   currentRange: string,
