@@ -5,7 +5,7 @@ import chalk from 'chalk'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { PnpmUpgradeInteractive } from './index'
-import { checkForUpdateAsync } from './version-check'
+import { checkForUpdateAsync } from './services'
 
 const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'))
 

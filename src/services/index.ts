@@ -1,0 +1,7 @@
+/**
+ * External service integrations
+ */
+
+export * from './npm-registry'
+export * from './changelog-fetcher'
+export * from './version-checker'

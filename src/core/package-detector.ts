@@ -1,13 +1,13 @@
 import * as semver from 'semver'
-import { PackageInfo, PackageJson, PnpmUpgradeOptions } from './types'
+import { PackageInfo, PackageJson, PnpmUpgradeOptions } from '../types'
 import {
   findPackageJson,
   readPackageJson,
   findAllPackageJsonFiles,
   collectAllDependencies,
-  getAllPackageData,
   findClosestMinorVersion,
-} from './utils'
+} from '../utils'
+import { getAllPackageData } from '../services'
 
 export class PackageDetector {
   private packageJsonPath: string | null = null
@@ -43,7 +43,9 @@ export class PackageDetector {
     // Always check all package.json files recursively with timeout protection
     this.showProgress('🔍 Scanning repository for package.json files...')
     const allPackageJsonFiles = this.findPackageJsonFilesWithTimeout(30000) // 30 second timeout
-    this.showProgress(`🔍 Found ${allPackageJsonFiles.length} package.json file${allPackageJsonFiles.length === 1 ? '' : 's'}`)
+    this.showProgress(
+      `🔍 Found ${allPackageJsonFiles.length} package.json file${allPackageJsonFiles.length === 1 ? '' : 's'}`
+    )
 
     // Step 2: Collect all dependencies from package.json files
     this.showProgress('🔍 Reading dependencies from package.json files...')
@@ -65,11 +67,15 @@ export class PackageDetector {
     const packageNames = Array.from(uniquePackageNames)
 
     // Step 4: Fetch all package data in one call per package
-    const allPackageData = await getAllPackageData(packageNames, (currentPackage: string, completed: number, total: number) => {
-      const percentage = Math.round((completed / total) * 100)
-      const truncatedPackage = currentPackage.length > 40 ? currentPackage.substring(0, 37) + '...' : currentPackage
-      this.showProgress(`🌐 Fetching ${percentage}% (${truncatedPackage})`)
-    })
+    const allPackageData = await getAllPackageData(
+      packageNames,
+      (currentPackage: string, completed: number, total: number) => {
+        const percentage = Math.round((completed / total) * 100)
+        const truncatedPackage =
+          currentPackage.length > 40 ? currentPackage.substring(0, 37) + '...' : currentPackage
+        this.showProgress(`🌐 Fetching ${percentage}% (${truncatedPackage})`)
+      }
+    )
 
     try {
       for (const dep of allDeps) {
@@ -98,7 +104,11 @@ export class PackageDetector {
             currentVersion: dep.version, // Keep original version specifier with prefix
             rangeVersion: closestMinorVersion || dep.version,
             latestVersion,
-            type: dep.type as 'dependencies' | 'devDependencies' | 'optionalDependencies' | 'peerDependencies',
+            type: dep.type as
+              | 'dependencies'
+              | 'devDependencies'
+              | 'optionalDependencies'
+              | 'peerDependencies',
             packageJsonPath: dep.packageJsonPath,
             isOutdated,
             hasRangeUpdate,
@@ -111,7 +121,11 @@ export class PackageDetector {
             currentVersion: dep.version,
             rangeVersion: 'unknown',
             latestVersion: 'unknown',
-            type: dep.type as 'dependencies' | 'devDependencies' | 'optionalDependencies' | 'peerDependencies',
+            type: dep.type as
+              | 'dependencies'
+              | 'devDependencies'
+              | 'optionalDependencies'
+              | 'peerDependencies',
             packageJsonPath: dep.packageJsonPath,
             isOutdated: false,
             hasRangeUpdate: false,
@@ -142,7 +156,9 @@ export class PackageDetector {
         }
       )
     } catch (err) {
-      throw new Error(`Failed to scan for package.json files: ${err}. Try using --exclude patterns to skip problematic directories.`)
+      throw new Error(
+        `Failed to scan for package.json files: ${err}. Try using --exclude patterns to skip problematic directories.`
+      )
     }
   }
 

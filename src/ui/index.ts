@@ -1,4 +1,4 @@
 export { VersionUtils } from './utils'
 export { StateManager, type UIState } from './state'
-export { UIRenderer } from './renderer'
+export { UIRenderer } from './renderer/index'
 export { InputHandler, ConfirmationInputHandler, type InputAction } from './input-handler'
