@@ -4,7 +4,7 @@ import {
   findPackageJson,
   readPackageJson,
   findAllPackageJsonFiles,
-  collectAllDependencies,
+  collectAllDependenciesAsync,
   findClosestMinorVersion,
 } from '../utils'
 import { getAllPackageDataFromJsdelivr } from '../services'
@@ -47,9 +47,9 @@ export class PackageDetector {
       `🔍 Found ${allPackageJsonFiles.length} package.json file${allPackageJsonFiles.length === 1 ? '' : 's'}`
     )
 
-    // Step 2: Collect all dependencies from package.json files
+    // Step 2: Collect all dependencies from package.json files (parallelized)
     this.showProgress('🔍 Reading dependencies from package.json files...')
-    const allDepsRaw = collectAllDependencies(allPackageJsonFiles, {
+    const allDepsRaw = await collectAllDependenciesAsync(allPackageJsonFiles, {
       includePeerDeps: this.includePeerDeps,
       includeOptionalDeps: this.includeOptionalDeps,
     })

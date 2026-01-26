@@ -1,4 +1,5 @@
 import { readFileSync, existsSync, readdirSync, statSync, realpathSync } from 'fs'
+import { promises as fsPromises } from 'fs'
 import { join, relative } from 'path'
 import { PackageJson } from '../types'
 
@@ -31,6 +32,18 @@ export function findWorkspaceRoot(cwd: string = process.cwd()): string | null {
 export function readPackageJson(path: string): PackageJson {
   try {
     const content = readFileSync(path, 'utf-8')
+    return JSON.parse(content)
+  } catch (error) {
+    throw new Error(`Failed to read package.json: ${error}`)
+  }
+}
+
+/**
+ * Read and parse a package.json file asynchronously
+ */
+export async function readPackageJsonAsync(path: string): Promise<PackageJson> {
+  try {
+    const content = await fsPromises.readFile(path, 'utf-8')
     return JSON.parse(content)
   } catch (error) {
     throw new Error(`Failed to read package.json: ${error}`)
@@ -84,6 +97,68 @@ export function collectAllDependencies(
       }
     } catch (error) {
       // Skip malformed package.json files
+    }
+  }
+
+  return allDeps
+}
+
+/**
+ * Collects all dependencies from multiple package.json files asynchronously.
+ * Reads all package.json files in parallel for better performance.
+ * Always includes regular dependencies and devDependencies.
+ * Optionally includes peer and optional dependencies based on flags.
+ */
+export async function collectAllDependenciesAsync(
+  packageJsonFiles: string[],
+  options: CollectDependenciesOptions = {}
+): Promise<Array<{ name: string; version: string; type: string; packageJsonPath: string }>> {
+  const { includePeerDeps = false, includeOptionalDeps = false } = options
+
+  // Read all package.json files in parallel
+  const packageJsonPromises = packageJsonFiles.map(async (packageJsonPath) => {
+    try {
+      const packageJson = await readPackageJsonAsync(packageJsonPath)
+      return { packageJson, packageJsonPath }
+    } catch (error) {
+      // Skip malformed package.json files
+      return null
+    }
+  })
+
+  const results = await Promise.all(packageJsonPromises)
+
+  // Collect dependencies from all successfully read package.json files
+  const allDeps: Array<{ name: string; version: string; type: string; packageJsonPath: string }> =
+    []
+
+  for (const result of results) {
+    if (!result) continue
+
+    const { packageJson, packageJsonPath } = result
+    const depTypes: Array<
+      'dependencies' | 'devDependencies' | 'optionalDependencies' | 'peerDependencies'
+    > = ['dependencies', 'devDependencies']
+
+    if (includeOptionalDeps) {
+      depTypes.push('optionalDependencies')
+    }
+    if (includePeerDeps) {
+      depTypes.push('peerDependencies')
+    }
+
+    for (const depType of depTypes) {
+      const deps = packageJson[depType]
+      if (deps && typeof deps === 'object') {
+        for (const [name, version] of Object.entries(deps)) {
+          allDeps.push({
+            name,
+            version: version as string,
+            type: depType,
+            packageJsonPath,
+          })
+        }
+      }
     }
   }
 
