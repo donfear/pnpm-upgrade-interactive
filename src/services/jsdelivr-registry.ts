@@ -84,13 +84,13 @@ async function fetchPackageFromJsdelivr(
       // jsdelivr doesn't have this package, fallback to npm registry
       const npmData = await getAllPackageData([packageName])
       const data = npmData.get(packageName) || { latestVersion: 'unknown', allVersions: [] }
-      
+
       // Cache the result
       packageCache.set(packageName, {
         data,
         timestamp: Date.now(),
       })
-      
+
       return data
     }
 
@@ -130,7 +130,7 @@ async function fetchPackageFromJsdelivr(
 
     // No major version provided, just return latest with minimal version list
     const allVersions = [latestVersion]
-    
+
     // Add the current version if it's valid and not already in the list
     if (currentVersion && semver.valid(currentVersion)) {
       const coerced = semver.coerce(currentVersion)
@@ -155,13 +155,13 @@ async function fetchPackageFromJsdelivr(
     // Fallback to npm registry on any error
     const npmData = await getAllPackageData([packageName])
     const data = npmData.get(packageName) || { latestVersion: 'unknown', allVersions: [] }
-    
+
     // Cache the result
     packageCache.set(packageName, {
       data,
       timestamp: Date.now(),
     })
-    
+
     return data
   }
 }
