@@ -7,7 +7,7 @@ import {
   collectAllDependencies,
   findClosestMinorVersion,
 } from '../utils'
-import { getAllPackageData } from '../services'
+import { getAllPackageDataFromJsdelivr } from '../services'
 
 export class PackageDetector {
   private packageJsonPath: string | null = null
@@ -66,9 +66,19 @@ export class PackageDetector {
     }
     const packageNames = Array.from(uniquePackageNames)
 
-    // Step 4: Fetch all package data in one call per package
-    const allPackageData = await getAllPackageData(
+    // Step 4: Fetch all package data in one call per package using jsdelivr CDN
+    // Create a map of package names to their current versions for major version optimization
+    const currentVersions = new Map<string, string>()
+    for (const dep of allDeps) {
+      // Use the first occurrence of each package's version
+      if (!currentVersions.has(dep.name)) {
+        currentVersions.set(dep.name, dep.version)
+      }
+    }
+
+    const allPackageData = await getAllPackageDataFromJsdelivr(
       packageNames,
+      currentVersions,
       (currentPackage: string, completed: number, total: number) => {
         const percentage = Math.round((completed / total) * 100)
         const truncatedPackage =
