@@ -1,5 +1,10 @@
 # pnpm-upgrade-interactive
 
+**⚠️ DEPRECATED ⚠️**  
+This package is no longer maintained.  
+Please use the new actively developed successor: **[inup](https://github.com/donfear/inup)**  
+It supports **pnpm**, **npm**, **yarn**, and **bun** with the same interactive upgrade experience (and more).
+
 [![npm version](https://img.shields.io/npm/v/pnpm-upgrade-interactive?logo=npm&logoColor=%23CB3837&style=for-the-badge&color=crimson)](https://www.npmjs.com/package/pnpm-upgrade-interactive)
 [![Downloads](https://img.shields.io/npm/dm/pnpm-upgrade-interactive?style=for-the-badge&color=646CFF&logoColor=white)](https://www.npmjs.com/package/pnpm-upgrade-interactive)
 [![Total downloads](https://img.shields.io/npm/dt/pnpm-upgrade-interactive?style=for-the-badge&color=informational)](https://www.npmjs.com/package/pnpm-upgrade-interactive)
