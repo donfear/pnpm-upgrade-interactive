@@ -16,7 +16,7 @@ import {
   InputAction,
   VersionUtils,
 } from './ui'
-import { changelogFetcher } from './changelog-fetcher'
+import { changelogFetcher } from './services'
 
 export class InteractiveUI {
   private renderer: UIRenderer

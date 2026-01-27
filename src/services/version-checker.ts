@@ -1,5 +1,6 @@
 import { execSync } from 'child_process'
 import * as semver from 'semver'
+import { REQUEST_TIMEOUT } from '../constants'
 
 export interface VersionCheckResult {
   currentVersion: string
@@ -10,9 +11,6 @@ export interface VersionCheckResult {
 
 /**
  * Check if the current package version is outdated compared to npm registry
- * @param packageName - Name of the package to check
- * @param currentVersion - Current version being run
- * @returns Version check result or null if check fails
  */
 export async function checkForUpdate(
   packageName: string,
@@ -22,7 +20,7 @@ export async function checkForUpdate(
     // Use npm view to get the latest version from registry
     const result = execSync(`npm view ${packageName} version`, {
       encoding: 'utf-8',
-      timeout: 3000, // 3 second timeout
+      timeout: REQUEST_TIMEOUT,
       stdio: ['pipe', 'pipe', 'pipe'],
     })
 

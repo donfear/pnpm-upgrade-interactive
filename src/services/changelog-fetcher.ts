@@ -162,9 +162,7 @@ export class ChangelogFetcher {
   /**
    * Fetch weekly download statistics from npm
    */
-  private async fetchDownloadStats(
-    packageName: string
-  ): Promise<{ downloads: number } | null> {
+  private async fetchDownloadStats(packageName: string): Promise<{ downloads: number } | null> {
     try {
       const response = await fetch(
         `https://api.npmjs.org/downloads/point/last-week/${encodeURIComponent(packageName)}`,
@@ -203,15 +201,18 @@ export class ChangelogFetcher {
   /**
    * Cache package metadata directly (used by utils to avoid duplicate fetches)
    */
-  cacheMetadata(packageName: string, rawData: {
-    description?: string
-    homepage?: string
-    repository?: any
-    bugs?: any
-    keywords?: string[]
-    author?: any
-    license?: string
-  }): void {
+  cacheMetadata(
+    packageName: string,
+    rawData: {
+      description?: string
+      homepage?: string
+      repository?: any
+      bugs?: any
+      keywords?: string[]
+      author?: any
+      license?: string
+    }
+  ): void {
     const repositoryUrl = this.extractRepositoryUrl(rawData.repository?.url || '')
     const npmUrl = `https://www.npmjs.com/package/${encodeURIComponent(packageName)}`
     const issuesUrl = repositoryUrl ? `${repositoryUrl}/issues` : undefined

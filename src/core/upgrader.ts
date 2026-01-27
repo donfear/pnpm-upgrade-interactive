@@ -2,8 +2,8 @@ import chalk from 'chalk'
 import { createSpinner } from 'nanospinner'
 import { existsSync, writeFileSync } from 'fs'
 import { dirname } from 'path'
-import { PackageInfo, PackageUpgradeChoice } from './types'
-import { executeCommand, findWorkspaceRoot, readPackageJson } from './utils'
+import { PackageInfo, PackageUpgradeChoice } from '../types'
+import { executeCommand, findWorkspaceRoot, readPackageJson } from '../utils'
 
 export class PackageUpgrader {
   public async upgradePackages(
