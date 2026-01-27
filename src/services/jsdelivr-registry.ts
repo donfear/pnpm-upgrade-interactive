@@ -32,7 +32,7 @@ async function fetchPackageJsonFromJsdelivr(
 ): Promise<{ version: string } | null> {
   try {
     const url = `${JSDELIVR_CDN_URL}/${encodeURIComponent(packageName)}@${versionTag}/package.json`
-    
+
     const { statusCode, body } = await request(url, {
       dispatcher: jsdelivrPool,
       method: 'GET',

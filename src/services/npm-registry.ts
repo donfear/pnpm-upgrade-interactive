@@ -33,7 +33,7 @@ async function fetchPackageFromRegistry(
 
   try {
     const url = `${NPM_REGISTRY_URL}/${encodeURIComponent(packageName)}`
-    
+
     const { statusCode, body } = await request(url, {
       dispatcher: npmPool,
       method: 'GET',
