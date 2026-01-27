@@ -1,7 +1,16 @@
-import pLimit from 'p-limit'
+import { Pool, request } from 'undici'
 import * as semver from 'semver'
-import { CACHE_TTL, JSDELIVR_CDN_URL, MAX_CONCURRENT_REQUESTS } from '../constants'
+import { CACHE_TTL, JSDELIVR_CDN_URL, MAX_CONCURRENT_REQUESTS, REQUEST_TIMEOUT } from '../constants'
 import { getAllPackageData } from './npm-registry'
+
+// Create a persistent connection pool for jsDelivr CDN with optimal settings
+// This enables connection reuse and HTTP/1.1 keep-alive for blazing fast requests
+const jsdelivrPool = new Pool('https://cdn.jsdelivr.net', {
+  connections: MAX_CONCURRENT_REQUESTS, // Maximum concurrent connections
+  pipelining: 10, // Enable request pipelining for even better performance
+  keepAliveTimeout: 60000, // Keep connections alive for 60 seconds
+  keepAliveMaxTimeout: 600000, // Maximum keep-alive timeout
+})
 
 // In-memory cache for package data
 interface CacheEntry {
@@ -11,7 +20,8 @@ interface CacheEntry {
 const packageCache = new Map<string, CacheEntry>()
 
 /**
- * Fetches package.json from jsdelivr CDN for a specific version tag.
+ * Fetches package.json from jsdelivr CDN for a specific version tag using undici pool.
+ * Uses connection pooling and keep-alive for maximum performance.
  * @param packageName - The npm package name
  * @param versionTag - The version tag (e.g., '14', 'latest')
  * @returns The package.json content or null if not found
@@ -22,18 +32,25 @@ async function fetchPackageJsonFromJsdelivr(
 ): Promise<{ version: string } | null> {
   try {
     const url = `${JSDELIVR_CDN_URL}/${encodeURIComponent(packageName)}@${versionTag}/package.json`
-    const response = await fetch(url, {
+    
+    const { statusCode, body } = await request(url, {
+      dispatcher: jsdelivrPool,
       method: 'GET',
       headers: {
         accept: 'application/json',
       },
+      headersTimeout: REQUEST_TIMEOUT,
+      bodyTimeout: REQUEST_TIMEOUT,
     })
 
-    if (!response.ok) {
+    if (statusCode !== 200) {
+      // Consume body to prevent memory leaks
+      await body.text()
       return null
     }
 
-    const data = (await response.json()) as { version?: string }
+    const text = await body.text()
+    const data = JSON.parse(text) as { version?: string }
     return data.version ? { version: data.version } : null
   } catch (error) {
     console.error(`Error fetching from jsdelivr for package: ${packageName}@${versionTag}`, error)
@@ -168,7 +185,7 @@ async function fetchPackageFromJsdelivr(
 
 /**
  * Fetches package version data from jsdelivr CDN for multiple packages.
- * Uses native fetch + p-limit for optimal concurrency control.
+ * Uses undici connection pool for blazing fast performance with connection reuse.
  * Falls back to npm registry if jsdelivr doesn't have the package.
  * @param packageNames - Array of package names to fetch
  * @param currentVersions - Optional map of package names to their current versions
@@ -189,22 +206,19 @@ export async function getAllPackageDataFromJsdelivr(
   const total = packageNames.length
   let completedCount = 0
 
-  // Use p-limit for controlled concurrency + native fetch for HTTP
-  const limit = pLimit(MAX_CONCURRENT_REQUESTS)
+  // Fire all requests simultaneously - undici pool handles concurrency internally
+  // No need for p-limit - the pool's connection limit controls concurrency
+  const allPromises = packageNames.map(async (packageName) => {
+    const currentVersion = currentVersions?.get(packageName)
+    const data = await fetchPackageFromJsdelivr(packageName, currentVersion)
+    packageData.set(packageName, data)
 
-  const allPromises = packageNames.map((packageName) =>
-    limit(async () => {
-      const currentVersion = currentVersions?.get(packageName)
-      const data = await fetchPackageFromJsdelivr(packageName, currentVersion)
-      packageData.set(packageName, data)
+    completedCount++
 
-      completedCount++
-
-      if (onProgress) {
-        onProgress(packageName, completedCount, total)
-      }
-    })
-  )
+    if (onProgress) {
+      onProgress(packageName, completedCount, total)
+    }
+  })
 
   // Wait for all requests to complete
   await Promise.all(allPromises)
@@ -222,4 +236,11 @@ export async function getAllPackageDataFromJsdelivr(
  */
 export function clearJsdelivrPackageCache(): void {
   packageCache.clear()
+}
+
+/**
+ * Close the jsDelivr connection pool (useful for graceful shutdown)
+ */
+export async function closeJsdelivrPool(): Promise<void> {
+  await jsdelivrPool.close()
 }
